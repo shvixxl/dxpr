@@ -27,7 +27,7 @@ dxpr d20
 dxpr 3d6
 dxpr d100
 dxpr 2d20kh1
-dxpr 2d20kl1
+dxpr 2d20kl
 dxpr 4d6dl1
 ```
 

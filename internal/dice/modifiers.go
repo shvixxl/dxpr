@@ -10,11 +10,9 @@ import (
 type Modifier struct {
 	// Name is the modifier keyword (e.g. "kh").
 	Name string
-	// TakesNumber reports whether the modifier takes an explicit count
-	// (kh1) as opposed to taking none.
-	TakesNumber bool
 	// Resolve converts the pool size and the modifier's count into a
-	// KeepRule, validating ranges.
+	// KeepRule, validating ranges. The count defaults to 1 when omitted
+	// (2d20kh == 2d20kh1).
 	Resolve func(count, n int) (*ast.KeepRule, error)
 }
 
@@ -29,7 +27,6 @@ func keepRange(mod string, n, max int) error {
 // KeepHighest keeps the highest n rolls (kh).
 var KeepHighest = Modifier{
 	Name:        "kh",
-	TakesNumber: true,
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("kh", n, count); err != nil {
 			return nil, err
@@ -41,7 +38,6 @@ var KeepHighest = Modifier{
 // KeepLowest keeps the lowest n rolls (kl).
 var KeepLowest = Modifier{
 	Name:        "kl",
-	TakesNumber: true,
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("kl", n, count); err != nil {
 			return nil, err
@@ -53,7 +49,6 @@ var KeepLowest = Modifier{
 // DropHighest drops the highest n rolls, keeping the rest (dh).
 var DropHighest = Modifier{
 	Name:        "dh",
-	TakesNumber: true,
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("dh", n, count-1); err != nil {
 			return nil, err
@@ -65,7 +60,6 @@ var DropHighest = Modifier{
 // DropLowest drops the lowest n rolls, keeping the rest (dl).
 var DropLowest = Modifier{
 	Name:        "dl",
-	TakesNumber: true,
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("dl", n, count-1); err != nil {
 			return nil, err

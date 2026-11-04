@@ -153,6 +153,8 @@ func TestKeepDrop(t *testing.T) {
 		want  int
 	}{
 		{"keep highest is advantage", "2d20kh1", []int{5, 12}, 12},
+		{"modifier without count defaults to 1", "2d20kh", []int{5, 12}, 12},
+		{"drop without count defaults to 1", "4d6dl", []int{1, 6, 2, 4}, 12},
 		{"keep lowest is disadvantage", "2d20kl1", []int{5, 12}, 5},
 		{"drop lowest keeps rest", "4d6dl1", []int{1, 6, 2, 4}, 12},
 		{"drop highest keeps rest", "3d6dh1", []int{1, 6, 2}, 3},

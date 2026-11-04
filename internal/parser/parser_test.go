@@ -50,6 +50,8 @@ func TestParse(t *testing.T) {
 		{"drop highest", "3d6dh1", &ast.Dice{Count: 3, Sides: 6, Keep: &ast.KeepRule{Keep: 2, Highest: false}}},
 		{"modifier with spaces", "4d6 dl 1", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}},
 		{"modifier on countless dice", "d20kh1", &ast.Dice{Count: 1, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}},
+		{"modifier without count defaults to 1", "2d20kh", &ast.Dice{Count: 2, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}},
+		{"drop without count defaults to 1", "4d6dl", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}},
 		{"modifier in arithmetic", "2d20kh1 + 5", bin("+", &ast.Dice{Count: 2, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}, num(5))},
 	}
 
@@ -88,7 +90,6 @@ func TestParseErrors(t *testing.T) {
 		{"function too few args", "abs()"},
 		{"function too many args", "abs(1, 2)"},
 		{"function missing paren", "abs(1"},
-		{"modifier without count", "3d6kh"},
 		{"modifier keep too many", "4d6kh5"},
 		{"modifier keep zero", "4d6kh0"},
 		{"modifier drop all dice", "4d6dl4"},

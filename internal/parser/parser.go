@@ -179,8 +179,9 @@ func (p *parser) diceModifiers(d *ast.Dice) (ast.Node, error) {
 	}
 	p.next()
 
+	// The count is optional and defaults to 1 (2d20kh == 2d20kh1).
 	n := 1
-	if mod.TakesNumber {
+	if p.peek().Kind == tokenizer.KindNumber {
 		var err error
 		n, err = p.number()
 		if err != nil {

@@ -17,8 +17,8 @@ type KeepRule struct {
 	Highest bool
 }
 
-// Dice is a roll of Count dice, each with Sides.
-// Count may be zero, meaning 1 (e.g. "d20" == "1d20").
+// Dice is a roll of Count dice, each with Sides. The parser sets Count to 1
+// when omitted ("d20" == "1d20").
 // Keep optionally selects a subset of the rolls (kh/kl/dh/dl).
 type Dice struct {
 	Count int

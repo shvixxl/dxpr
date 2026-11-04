@@ -116,6 +116,12 @@ func (p *parser) atom() (ast.Node, error) {
 		return inner, nil
 	}
 
+	// A bare 'd' lexes as an identifier; give a helpful error instead of
+	// "unknown function".
+	if tok := p.peek(); tok.Kind == tokenizer.KindIdent && (tok.Value == "d" || tok.Value == "D") {
+		return nil, fmt.Errorf("expected number of sides after 'd'")
+	}
+
 	// Function calls.
 	if p.peek().Kind == tokenizer.KindIdent {
 		return p.functionCall()

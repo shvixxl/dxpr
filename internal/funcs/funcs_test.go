@@ -1,25 +1,40 @@
 package funcs
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/shvixxl/dxpr/internal/value"
+)
+
+func i(n int64) value.Value { return value.FromInt(n) }
+
+func f(x float64) value.Value { return value.FromFloat(x) }
 
 func TestApply(t *testing.T) {
 	tests := []struct {
 		name string
 		fn   string
-		args []int
-		want int
+		args []value.Value
+		want value.Value
 	}{
-		{"abs positive", "abs", []int{5}, 5},
-		{"abs negative", "abs", []int{-5}, 5},
-		{"abs zero", "abs", []int{0}, 0},
-		{"round", "round", []int{7}, 7},
-		{"ceil", "ceil", []int{7}, 7},
-		{"floor", "floor", []int{7}, 7},
-		{"min", "min", []int{3, 1, 2}, 1},
-
-		{"min negative", "min", []int{-3, -1}, -3},
-		{"max", "max", []int{3, 1, 2}, 3},
-
+		{"abs positive", "abs", []value.Value{i(5)}, i(5)},
+		{"abs negative", "abs", []value.Value{i(-5)}, i(5)},
+		{"abs zero", "abs", []value.Value{i(0)}, i(0)},
+		{"abs float", "abs", []value.Value{f(-2.5)}, f(2.5)},
+		{"round int", "round", []value.Value{i(7)}, i(7)},
+		{"round half up", "round", []value.Value{f(3.5)}, i(4)},
+		{"round half away from zero", "round", []value.Value{f(-3.5)}, i(-4)},
+		{"floor int", "floor", []value.Value{i(7)}, i(7)},
+		{"floor fraction", "floor", []value.Value{f(3.5)}, i(3)},
+		{"floor negative fraction", "floor", []value.Value{f(-3.5)}, i(-4)},
+		{"ceil int", "ceil", []value.Value{i(7)}, i(7)},
+		{"ceil fraction", "ceil", []value.Value{f(3.5)}, i(4)},
+		{"ceil negative fraction", "ceil", []value.Value{f(-3.5)}, i(-3)},
+		{"min", "min", []value.Value{i(3), i(1), i(2)}, i(1)},
+		{"min mixed int float", "min", []value.Value{i(3), f(1.5)}, f(1.5)},
+		{"min negative", "min", []value.Value{i(-3), i(-1)}, i(-3)},
+		{"max", "max", []value.Value{i(3), i(1), i(2)}, i(3)},
+		{"max mixed", "max", []value.Value{i(3), f(3.5)}, f(3.5)},
 	}
 
 	for _, tt := range tests {
@@ -36,7 +51,7 @@ func TestApply(t *testing.T) {
 				t.Fatalf("Apply(%v): %v", tt.args, err)
 			}
 			if got != tt.want {
-				t.Errorf("Apply(%v) = %d, want %d", tt.args, got, tt.want)
+				t.Errorf("Apply(%v) = %v, want %v", tt.args, got, tt.want)
 			}
 		})
 	}

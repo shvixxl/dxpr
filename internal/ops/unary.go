@@ -1,6 +1,10 @@
 package ops
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/shvixxl/dxpr/internal/value"
+)
 
 // Unary is a prefix (unary) operator.
 type Unary struct {
@@ -9,7 +13,7 @@ type Unary struct {
 	// BindingPower is the operator's precedence; higher binds tighter.
 	BindingPower int
 	// Apply computes the operator's result.
-	Apply func(value int) (int, error)
+	Apply func(operand value.Value) (value.Value, error)
 }
 
 // unaries is the full set of unary operators.

@@ -90,14 +90,15 @@ func Tokenize(expr string) ([]Token, error) {
 
 // isPunct reports whether r may appear in an operator symbol.
 func isPunct(r rune) bool {
-	return !unicode.IsSpace(r) && !unicode.IsDigit(r) && r != 'd' && r != 'D'
+	return !unicode.IsSpace(r) && !unicode.IsDigit(r) && !unicode.IsLetter(r)
 }
 
 // longestOperatorMatch returns the longest registered operator symbol that is
-// a prefix of run.
+// a prefix of run. It iterates runes so multi-byte characters are never split.
 func longestOperatorMatch(run string) (string, bool) {
-	for size := len(run); size > 0; size-- {
-		prefix := run[:size]
+	runes := []rune(run)
+	for size := len(runes); size > 0; size-- {
+		prefix := string(runes[:size])
 		if _, ok := ops.BinaryBySymbol[prefix]; ok {
 			return prefix, true
 		}

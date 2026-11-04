@@ -1,6 +1,10 @@
 package ops
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/shvixxl/dxpr/internal/value"
+)
 
 // Binary is a binary operator.
 type Binary struct {
@@ -13,7 +17,7 @@ type Binary struct {
 	// RightAssoc makes the operator right-associative (e.g. exponentiation).
 	RightAssoc bool
 	// Apply computes the operator's result.
-	Apply func(left, right int) (int, error)
+	Apply func(left, right value.Value) (value.Value, error)
 }
 
 // binaries is the full set of binary operators.

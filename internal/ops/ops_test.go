@@ -1,26 +1,40 @@
 package ops
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/shvixxl/dxpr/internal/value"
+)
+
+func i(n int64) value.Value { return value.FromInt(n) }
+
+func f(x float64) value.Value { return value.FromFloat(x) }
 
 func TestBinaryApply(t *testing.T) {
 	tests := []struct {
 		name  string
 		sym   string
-		left  int
-		right int
-		want  int
+		left  value.Value
+		right value.Value
+		want  value.Value
 	}{
-		{"add", "+", 2, 3, 5},
-		{"sub", "-", 5, 3, 2},
-		{"mul", "*", 4, 6, 24},
-		{"div", "/", 7, 2, 3},
-		{"div truncates toward zero", "/", -7, 2, -3},
-		{"floor div", "//", 7, 2, 3},
-		{"floor div floors", "//", -7, 2, -4},
-		{"mod", "%", 7, 3, 1},
-		{"pow", "^", 2, 10, 1024},
-		{"pow alias", "**", 3, 3, 27},
-		{"pow zero exponent", "^", 5, 0, 1},
+		{"add", "+", i(2), i(3), i(5)},
+		{"sub", "-", i(5), i(3), i(2)},
+		{"mul", "*", i(4), i(6), i(24)},
+		{"div exact", "/", i(8), i(2), i(4)},
+		{"div fraction", "/", i(7), i(2), f(3.5)},
+		{"div negative fraction", "/", i(-7), i(2), f(-3.5)},
+		{"floor div", "//", i(7), i(2), i(3)},
+		{"floor div floors", "//", i(-7), i(2), i(-4)},
+		{"floor div float", "//", f(7.5), i(2), i(3)},
+		{"mod", "%", i(7), i(3), i(1)},
+		{"pow", "^", i(2), i(10), i(1024)},
+		{"pow alias", "**", i(3), i(3), i(27)},
+		{"pow zero exponent", "^", i(5), i(0), i(1)},
+		{"pow negative exponent is float", "^", i(2), i(-1), f(0.5)},
+		{"pow float base", "^", f(2.5), i(2), f(6.25)},
+		{"add promotes to float", "+", i(1), f(2.5), f(3.5)},
+		{"mul with float", "*", f(2.5), i(4), f(10)},
 	}
 
 	for _, tt := range tests {
@@ -31,10 +45,10 @@ func TestBinaryApply(t *testing.T) {
 			}
 			got, err := op.Apply(tt.left, tt.right)
 			if err != nil {
-				t.Fatalf("Apply(%d, %d): %v", tt.left, tt.right, err)
+				t.Fatalf("Apply(%v, %v): %v", tt.left, tt.right, err)
 			}
 			if got != tt.want {
-				t.Errorf("Apply(%d, %d) = %d, want %d", tt.left, tt.right, got, tt.want)
+				t.Errorf("Apply(%v, %v) = %v, want %v", tt.left, tt.right, got, tt.want)
 			}
 		})
 	}
@@ -44,13 +58,19 @@ func TestBinaryErrors(t *testing.T) {
 	tests := []struct {
 		name  string
 		sym   string
-		left  int
-		right int
+		left  value.Value
+		right value.Value
 	}{
-		{"div by zero", "/", 5, 0},
-		{"floor div by zero", "//", 5, 0},
-		{"mod by zero", "%", 5, 0},
-		{"negative exponent", "^", 2, -1},
+		{"div by zero", "/", i(5), i(0)},
+		{"div by zero float", "/", i(5), f(0)},
+		{"floor div by zero", "//", i(5), i(0)},
+		{"mod by zero", "%", i(5), i(0)},
+		{"mod float operand", "%", f(1.5), i(2)},
+		{"exponent too large", "^", i(2), i(64)},
+		{"overflow", "^", i(2), i(63)},
+		{"add overflow", "+", i(9223372036854775807), i(1)},
+		{"mul overflow", "*", i(9223372036854775807), i(2)},
+		{"pow float out of range", "^", i(10), i(400)},
 	}
 
 	for _, tt := range tests {
@@ -60,7 +80,7 @@ func TestBinaryErrors(t *testing.T) {
 				t.Fatalf("LookupBinary(%q): %v", tt.sym, err)
 			}
 			if _, err := op.Apply(tt.left, tt.right); err == nil {
-				t.Errorf("Apply(%d, %d) succeeded, want error", tt.left, tt.right)
+				t.Errorf("Apply(%v, %v) succeeded, want error", tt.left, tt.right)
 			}
 		})
 	}
@@ -83,6 +103,17 @@ func TestRegistryProperties(t *testing.T) {
 		if op.Apply == nil {
 			t.Errorf("operator %q has nil Apply", symbol)
 		}
+	}
+}
+
+func TestNegate(t *testing.T) {
+	got, err := Negate.Apply(i(5))
+	if err != nil || got != i(-5) {
+		t.Errorf("Negate(5) = %v, %v; want -5", got, err)
+	}
+	got, err = Negate.Apply(f(2.5))
+	if err != nil || got != f(-2.5) {
+		t.Errorf("Negate(2.5) = %v, %v; want -2.5", got, err)
 	}
 }
 

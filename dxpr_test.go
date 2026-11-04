@@ -1,7 +1,6 @@
 package dxpr_test
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -76,7 +75,7 @@ func TestEvaluateErrors(t *testing.T) {
 		{"division by zero", "5 / 0"},
 		{"floor division by zero", "5 // 0"},
 		{"modulus by zero", "5 % 0"},
-		{"negative exponent", "2 ^ -1"},
+		{"modulus with float", "7 / 2 % 2"},
 		{"dice without sides", "3d"},
 	}
 
@@ -112,6 +111,37 @@ func TestEvaluateWithDiceCustomSequence(t *testing.T) {
 	}
 	if roller.next != 3 {
 		t.Errorf("Roll called %d times, want 3", roller.next)
+	}
+}
+
+func TestFloatSemantics(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want int
+	}{
+		{"exact division stays int", "8 / 2", 4},
+		{"fraction floors at the end", "7 / 2", 3},
+		{"negative fraction floors down", "-7 / 2", -4},
+		{"round", "round(7 / 2)", 4},
+		{"floor", "floor(7 / 2)", 3},
+		{"ceil", "ceil(7 / 2)", 4},
+		{"negative exponent is float", "2 ^ -1", 0},
+		{"float flows through arithmetic", "7 / 2 + 1", 4},
+		{"float floors only at the end", "ceil(7 / 2 * 2)", 7},
+		{"half a roll", "d20 / 2", 1}, // seqRoller returns 3 → 1.5 → 1
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := dxpr.EvaluateWithDice(tt.in, &seqRoller{rolls: []int{3}})
+			if err != nil {
+				t.Fatalf("EvaluateWithDice(%q): %v", tt.in, err)
+			}
+			if got != tt.want {
+				t.Errorf("EvaluateWithDice(%q) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -155,5 +185,5 @@ func TestDiceInterface(t *testing.T) {
 type errRoller struct{}
 
 func (errRoller) Roll(sides int) (int, error) {
-	return 0, errors.New(fmt.Sprintf("boom: %d sides", sides))
+	return 0, fmt.Errorf("boom: %d sides", sides)
 }

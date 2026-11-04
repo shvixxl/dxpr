@@ -18,10 +18,10 @@ type Modifier struct {
 	Resolve func(count, n int) (*ast.KeepRule, error)
 }
 
-// keepRange validates that n is in [1, count].
-func keepRange(mod string, n, count int) error {
-	if n < 1 || n > count {
-		return fmt.Errorf("%s: count %d out of range [1, %d]", mod, n, count)
+// keepRange validates that n is in [1, max].
+func keepRange(mod string, n, max int) error {
+	if n < 1 || n > max {
+		return fmt.Errorf("%s: count %d out of range [1, %d]", mod, n, max)
 	}
 	return nil
 }
@@ -56,7 +56,7 @@ var DropHighest = Modifier{
 	TakesNumber: true,
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("dh", n, count-1); err != nil {
-			return nil, fmt.Errorf("dh: count %d out of range [1, %d]", n, count-1)
+			return nil, err
 		}
 		return &ast.KeepRule{Keep: count - n, Highest: false}, nil
 	},
@@ -68,7 +68,7 @@ var DropLowest = Modifier{
 	TakesNumber: true,
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("dl", n, count-1); err != nil {
-			return nil, fmt.Errorf("dl: count %d out of range [1, %d]", n, count-1)
+			return nil, err
 		}
 		return &ast.KeepRule{Keep: count - n, Highest: true}, nil
 	},

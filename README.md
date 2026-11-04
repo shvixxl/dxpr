@@ -47,9 +47,8 @@ dxpr '(d20 + 5) * 2'
 
 ```shell
 dxpr 'abs(-5)'
-dxpr 'round(2^10)'
-dxpr 'floor(7 // 2)'
-dxpr 'ceil(7 // 2)'
+dxpr 'round(7 / 2)'
+dxpr 'floor(d20 / 3)'
 dxpr 'min(3d6, 10)'
 dxpr 'max(d20, 10)'
 ```

@@ -1,33 +1,36 @@
 // Package tokenizer converts an expression string into a stream of tokens.
+//
+// Operators are not hardcoded here: any punctuation sequence is matched
+// against the ops registry (longest match first), making the registry the
+// single source of truth for operator symbols.
 package tokenizer
 
 import (
 	"fmt"
 	"strings"
 	"unicode"
+
+	"github.com/shvixxl/dxpr/internal/ops"
 )
 
 // Kind identifies the type of a token.
 type Kind int
 
 const (
-	KindNumber Kind = iota
-	KindDice   // 'd' or 'D'
-	KindPlus
-	KindMinus
-	KindTimes       // '*'
-	KindStarStar    // '**'
-	KindSlash       // '/'
-	KindDoubleSlash // '//'
-	KindPercent     // '%'
-	KindCaret       // '^'
+	KindNumber   Kind = iota
+	KindDice          // 'd' or 'D'
+	KindOperator      // any symbol registered in ops
+	KindIdent         // function name
+	KindLParen
+	KindRParen
+	KindComma
 	KindEOF
 )
 
 // Token is a single lexical unit of an expression.
 type Token struct {
 	Kind  Kind
-	Value string // literal text (digits for KindNumber)
+	Value string // literal text (digits for numbers, operator symbol for operators)
 }
 
 // Tokenize splits expr into tokens.
@@ -49,41 +52,57 @@ func Tokenize(expr string) ([]Token, error) {
 		case r == 'd' || r == 'D':
 			toks = append(toks, Token{Kind: KindDice, Value: string(r)})
 			i++
-		case r == '+':
-			toks = append(toks, Token{Kind: KindPlus, Value: "+"})
-			i++
-		case r == '-':
-			toks = append(toks, Token{Kind: KindMinus, Value: "-"})
-			i++
-		case r == '*':
-			if i+1 < len(runes) && runes[i+1] == '*' {
-				toks = append(toks, Token{Kind: KindStarStar, Value: "**"})
-				i += 2
-			} else {
-				toks = append(toks, Token{Kind: KindTimes, Value: "*"})
+		case unicode.IsLetter(r):
+			start := i
+			for i < len(runes) && (unicode.IsLetter(runes[i]) || unicode.IsDigit(runes[i])) {
 				i++
 			}
-		case r == '/':
-			if i+1 < len(runes) && runes[i+1] == '/' {
-				toks = append(toks, Token{Kind: KindDoubleSlash, Value: "//"})
-				i += 2
-			} else {
-				toks = append(toks, Token{Kind: KindSlash, Value: "/"})
-				i++
-			}
-		case r == '%':
-			toks = append(toks, Token{Kind: KindPercent, Value: "%"})
+			toks = append(toks, Token{Kind: KindIdent, Value: string(runes[start:i])})
+		case r == '(':
+			toks = append(toks, Token{Kind: KindLParen, Value: "("})
 			i++
-		case r == '^':
-			toks = append(toks, Token{Kind: KindCaret, Value: "^"})
+		case r == ')':
+			toks = append(toks, Token{Kind: KindRParen, Value: ")"})
+			i++
+		case r == ',':
+			toks = append(toks, Token{Kind: KindComma, Value: ","})
 			i++
 		default:
-			return nil, fmt.Errorf("unexpected character %q", string(r))
+			// Operator: consume the maximal punctuation run and match the
+			// longest registered symbol against it.
+			start := i
+			for i < len(runes) && isPunct(runes[i]) {
+				i++
+			}
+			run := string(runes[start:i])
+			sym, ok := longestOperatorMatch(run)
+			if !ok {
+				return nil, fmt.Errorf("unexpected character %q in expression %q", string(r), expr)
+			}
+			toks = append(toks, Token{Kind: KindOperator, Value: sym})
+			i = start + len([]rune(sym))
 		}
 	}
 
 	toks = append(toks, Token{Kind: KindEOF})
 	return toks, nil
+}
+
+// isPunct reports whether r may appear in an operator symbol.
+func isPunct(r rune) bool {
+	return !unicode.IsSpace(r) && !unicode.IsDigit(r) && r != 'd' && r != 'D'
+}
+
+// longestOperatorMatch returns the longest registered operator symbol that is
+// a prefix of run.
+func longestOperatorMatch(run string) (string, bool) {
+	for size := len(run); size > 0; size-- {
+		prefix := run[:size]
+		if _, ok := ops.BinaryBySymbol[prefix]; ok {
+			return prefix, true
+		}
+	}
+	return "", false
 }
 
 // Describe returns a human-readable name for a token kind.
@@ -93,25 +112,28 @@ func (k Kind) Describe() string {
 		return "number"
 	case KindDice:
 		return "'d'"
-	case KindPlus:
-		return "'+'"
-	case KindMinus:
-		return "'-'"
-	case KindTimes:
-		return "'*'"
-	case KindStarStar:
-		return "'**'"
-	case KindSlash:
-		return "'/'"
-	case KindDoubleSlash:
-		return "'//'"
-	case KindPercent:
-		return "'%'"
-	case KindCaret:
-		return "'^'"
+	case KindOperator:
+		return "operator"
+	case KindIdent:
+		return "identifier"
+	case KindLParen:
+		return "'('"
+	case KindRParen:
+		return "')'"
+	case KindComma:
+		return "','"
 	case KindEOF:
 		return "end of expression"
 	default:
 		return strings.ToLower(fmt.Sprintf("token(%d)", k))
 	}
+}
+
+// Describe returns a human-readable description of the token, including the
+// operator symbol when applicable.
+func (t Token) Describe() string {
+	if t.Kind == KindOperator {
+		return "'" + t.Value + "'"
+	}
+	return t.Kind.Describe()
 }

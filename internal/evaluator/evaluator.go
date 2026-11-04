@@ -3,9 +3,10 @@ package evaluator
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/shvixxl/dxpr/internal/ast"
+	"github.com/shvixxl/dxpr/internal/funcs"
+	"github.com/shvixxl/dxpr/internal/ops"
 )
 
 // Roller is satisfied by anything that can roll dice.
@@ -46,36 +47,37 @@ func Evaluate(node ast.Node, roller Roller) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		switch n.Op {
-		case "+":
-			return left + right, nil
-		case "-":
-			return left - right, nil
-		case "*":
-			return left * right, nil
-		case "/":
-			if right == 0 {
-				return 0, fmt.Errorf("division by zero")
-			}
-			return left / right, nil
-		case "//":
-			if right == 0 {
-				return 0, fmt.Errorf("division by zero")
-			}
-			return int(math.Floor(float64(left) / float64(right))), nil
-		case "%":
-			if right == 0 {
-				return 0, fmt.Errorf("division by zero")
-			}
-			return left % right, nil
-		case "^", "**":
-			if right < 0 {
-				return 0, fmt.Errorf("negative exponent %d", right)
-			}
-			return int(math.Pow(float64(left), float64(right))), nil
-		default:
-			return 0, fmt.Errorf("unknown operator %q", n.Op)
+		op, err := ops.LookupBinary(n.Op)
+		if err != nil {
+			return 0, err
 		}
+		return op.Apply(left, right)
+
+	case *ast.UnaryOp:
+		value, err := Evaluate(n.Operand, roller)
+		if err != nil {
+			return 0, err
+		}
+		op, err := ops.LookupUnary(n.Op)
+		if err != nil {
+			return 0, err
+		}
+		return op.Apply(value)
+
+	case *ast.FnCall:
+		args := make([]int, len(n.Args))
+		for i, arg := range n.Args {
+			v, err := Evaluate(arg, roller)
+			if err != nil {
+				return 0, err
+			}
+			args[i] = v
+		}
+		fn, err := funcs.Lookup(n.Name)
+		if err != nil {
+			return 0, err
+		}
+		return fn.Apply(args)
 
 	default:
 		return 0, fmt.Errorf("unknown node type %T", node)

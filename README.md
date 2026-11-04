@@ -2,13 +2,17 @@
 
 A dice expression evaluator for the command line.
 
+## Installation
+
+```shell
+go install github.com/shvixxl/dxpr/cmd/dxpr@latest
+```
+
 ## Usage
 
 ```shell
 dxpr <expression>
 ```
-
-All arguments are joined into a single expression, so quotes are optional:
 
 ```shell
 dxpr d20 + 5
@@ -18,19 +22,13 @@ dxpr d20 + 5
 
 ### Dice
 
-Roll dice with `NdM` notation — `N` dice with `M` sides each. The results are summed.
-
 ```shell
-dxpr d20        roll one 20-sided die
-dxpr 3d6        roll three 6-sided dice and sum them
-dxpr d100       roll one 100-sided die
+dxpr d20
+dxpr 3d6
+dxpr d100
 ```
 
-The die count may be omitted and defaults to 1: `d20` is the same as `1d20`.
-
-### Arithmetic
-
-Combine rolls with `+`, `-`, `*`, `/` (integer division), `//` (floor division), `%` (modulus) and `^` or `**` (exponentiation):
+### Operators
 
 ```shell
 dxpr d20 + 10
@@ -39,19 +37,18 @@ dxpr 2d6 * 3
 dxpr d100 / 7
 dxpr 2^10
 dxpr 3 ** 2
+dxpr (d20 + 5) * 2
+dxpr (2 + 3) * 4
 ```
 
-`^` and `**` bind tighter than `*` and `/`; `2^3^2` is `2^(3^2)` = 512.
-
-Unary negatives are not supported yet; `d20 - 5` is fine, `d20 + -5` is not.
-
-Division by zero and negative exponents are errors.
-
-## Errors
-
-Invalid expressions exit with a non-zero status and print an error message:
+### Functions
 
 ```shell
-dxpr "d20 +"
-dxpr: expected number, got end of expression
+dxpr abs(-5)
+dxpr round(2^10)
+dxpr floor(7 // 2)
+dxpr ceil(7 // 2)
+dxpr min(3d6, 10)
+dxpr max(d20, 10)
+dxpr min(4, 2, 3)
 ```

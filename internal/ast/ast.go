@@ -16,9 +16,21 @@ type Dice struct {
 	Sides int
 }
 
-// BinaryOp is a binary operation: Add (+) or Subtract (-).
+// BinaryOp is a binary operation (e.g. +, *, ^).
 type BinaryOp struct {
-	Op    string // "+" or "-"
+	Op    string
 	Left  Node
 	Right Node
+}
+
+// UnaryOp is a prefix operation (e.g. unary -).
+type UnaryOp struct {
+	Op      string
+	Operand Node
+}
+
+// FnCall is a function call, e.g. min(3d6, 10).
+type FnCall struct {
+	Name string
+	Args []Node
 }

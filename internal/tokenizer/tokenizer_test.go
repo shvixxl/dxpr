@@ -70,6 +70,24 @@ func TestTokenize(t *testing.T) {
 			"",
 			[]Token{{KindEOF, ""}},
 		},
+		{
+			"d followed by digit is dice",
+			"d20",
+			[]Token{{KindDice, "d"}, {KindNumber, "20"}, {KindEOF, ""}},
+		},
+		{
+			"d followed by letter is identifier",
+			"4d6dl1",
+			[]Token{
+				{KindNumber, "4"}, {KindDice, "d"}, {KindNumber, "6"},
+				{KindIdent, "dl"}, {KindNumber, "1"}, {KindEOF, ""},
+			},
+		},
+		{
+			"identifier with digits split",
+			"kh10",
+			[]Token{{KindIdent, "kh"}, {KindNumber, "10"}, {KindEOF, ""}},
+		},
 	}
 
 	for _, tt := range tests {

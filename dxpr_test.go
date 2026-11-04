@@ -53,12 +53,12 @@ func TestEvaluate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := dxpr.EvaluateWithRoller(tt.in, &seqRoller{rolls: []int{3}})
+			got, err := dxpr.EvaluateWithDice(tt.in, &seqRoller{rolls: []int{3}})
 			if err != nil {
-				t.Fatalf("EvaluateWithRoller(%q): %v", tt.in, err)
+				t.Fatalf("EvaluateWithDice(%q): %v", tt.in, err)
 			}
 			if got != tt.want {
-				t.Errorf("EvaluateWithRoller(%q) = %d, want %d", tt.in, got, tt.want)
+				t.Errorf("EvaluateWithDice(%q) = %d, want %d", tt.in, got, tt.want)
 			}
 		})
 	}
@@ -100,27 +100,55 @@ func TestEvaluateRealRandomness(t *testing.T) {
 	}
 }
 
-func TestEvaluateWithRollerCustomSequence(t *testing.T) {
+func TestEvaluateWithDiceCustomSequence(t *testing.T) {
 	// A roller returning distinct values exercises multi-dice summation.
 	roller := &seqRoller{rolls: []int{1, 2, 3}}
-	got, err := dxpr.EvaluateWithRoller("3d6", roller)
+	got, err := dxpr.EvaluateWithDice("3d6", roller)
 	if err != nil {
-		t.Fatalf("EvaluateWithRoller: %v", err)
+		t.Fatalf("EvaluateWithDice: %v", err)
 	}
 	if got != 6 {
-		t.Errorf("EvaluateWithRoller(3d6) = %d, want 6", got)
+		t.Errorf("EvaluateWithDice(3d6) = %d, want 6", got)
 	}
 	if roller.next != 3 {
 		t.Errorf("Roll called %d times, want 3", roller.next)
 	}
 }
 
-func TestRollerInterface(t *testing.T) {
-	// The public Roller interface must accept any implementation.
-	var _ dxpr.Roller = (*errRoller)(nil)
-	_, err := dxpr.EvaluateWithRoller("d6", &errRoller{})
+func TestKeepDrop(t *testing.T) {
+	tests := []struct {
+		name  string
+		in    string
+		rolls []int
+		want  int
+	}{
+		{"keep highest is advantage", "2d20kh1", []int{5, 12}, 12},
+		{"keep lowest is disadvantage", "2d20kl1", []int{5, 12}, 5},
+		{"drop lowest keeps rest", "4d6dl1", []int{1, 6, 2, 4}, 12},
+		{"drop highest keeps rest", "3d6dh1", []int{1, 6, 2}, 3},
+		{"keep in arithmetic", "2d20kh1 + 5", []int{5, 12}, 17},
+		{"keep inside function", "min(2d20kh1, 10)", []int{5, 12}, 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := dxpr.EvaluateWithDice(tt.in, &seqRoller{rolls: tt.rolls})
+			if err != nil {
+				t.Fatalf("EvaluateWithDice(%q): %v", tt.in, err)
+			}
+			if got != tt.want {
+				t.Errorf("EvaluateWithDice(%q) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDiceInterface(t *testing.T) {
+	// The public Dice interface must accept any implementation.
+	var _ dxpr.Dice = (*errRoller)(nil)
+	_, err := dxpr.EvaluateWithDice("d6", &errRoller{})
 	if err == nil {
-		t.Error("EvaluateWithRoller succeeded with failing roller, want error")
+		t.Error("EvaluateWithDice succeeded with failing roller, want error")
 	}
 }
 

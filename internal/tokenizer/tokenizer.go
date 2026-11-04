@@ -49,12 +49,12 @@ func Tokenize(expr string) ([]Token, error) {
 				i++
 			}
 			toks = append(toks, Token{Kind: KindNumber, Value: string(runes[start:i])})
-		case r == 'd' || r == 'D':
+		case (r == 'd' || r == 'D') && i+1 < len(runes) && unicode.IsDigit(runes[i+1]):
 			toks = append(toks, Token{Kind: KindDice, Value: string(r)})
 			i++
 		case unicode.IsLetter(r):
 			start := i
-			for i < len(runes) && (unicode.IsLetter(runes[i]) || unicode.IsDigit(runes[i])) {
+			for i < len(runes) && unicode.IsLetter(runes[i]) {
 				i++
 			}
 			toks = append(toks, Token{Kind: KindIdent, Value: string(runes[start:i])})

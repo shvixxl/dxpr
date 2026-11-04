@@ -9,11 +9,21 @@ type Number struct {
 	Value int
 }
 
+// KeepRule selects which rolls of a dice pool contribute to the total.
+type KeepRule struct {
+	// Keep is the number of rolls to keep.
+	Keep int
+	// Highest keeps the highest rolls instead of the lowest.
+	Highest bool
+}
+
 // Dice is a roll of Count dice, each with Sides.
 // Count may be zero, meaning 1 (e.g. "d20" == "1d20").
+// Keep optionally selects a subset of the rolls (kh/kl/dh/dl).
 type Dice struct {
 	Count int
 	Sides int
+	Keep  *KeepRule
 }
 
 // BinaryOp is a binary operation (e.g. +, *, ^).

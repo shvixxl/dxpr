@@ -44,6 +44,13 @@ func TestParse(t *testing.T) {
 		{"function variadic", "min(3, 1, 2)", &ast.FnCall{Name: "min", Args: []ast.Node{num(3), num(1), num(2)}}},
 		{"function with expression args", "max(1+1, 2^3)", &ast.FnCall{Name: "max", Args: []ast.Node{bin("+", num(1), num(1)), bin("^", num(2), num(3))}}},
 		{"function in arithmetic", "abs(-5) + 1", bin("+", &ast.FnCall{Name: "abs", Args: []ast.Node{&ast.UnaryOp{Op: "-", Operand: num(5)}}}, num(1))},
+		{"keep highest", "2d20kh1", &ast.Dice{Count: 2, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}},
+		{"keep lowest", "4d6kl2", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 2, Highest: false}}},
+		{"drop lowest", "4d6dl1", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}},
+		{"drop highest", "3d6dh1", &ast.Dice{Count: 3, Sides: 6, Keep: &ast.KeepRule{Keep: 2, Highest: false}}},
+		{"modifier with spaces", "4d6 dl 1", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}},
+		{"modifier on countless dice", "d20kh1", &ast.Dice{Count: 1, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}},
+		{"modifier in arithmetic", "2d20kh1 + 5", bin("+", &ast.Dice{Count: 2, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}, num(5))},
 	}
 
 	for _, tt := range tests {
@@ -81,6 +88,11 @@ func TestParseErrors(t *testing.T) {
 		{"function too few args", "abs()"},
 		{"function too many args", "abs(1, 2)"},
 		{"function missing paren", "abs(1"},
+		{"modifier without count", "3d6kh"},
+		{"modifier keep too many", "4d6kh5"},
+		{"modifier keep zero", "4d6kh0"},
+		{"modifier drop all dice", "4d6dl4"},
+		{"modifier on single die drop", "d20dl1"},
 	}
 
 	for _, tt := range tests {
@@ -104,7 +116,16 @@ func equal(a, b ast.Node) bool {
 		return ok && a.Value == b.Value
 	case *ast.Dice:
 		b, ok := b.(*ast.Dice)
-		return ok && a.Count == b.Count && a.Sides == b.Sides
+		if !ok || a.Count != b.Count || a.Sides != b.Sides {
+			return false
+		}
+		if (a.Keep == nil) != (b.Keep == nil) {
+			return false
+		}
+		if a.Keep == nil {
+			return true
+		}
+		return *a.Keep == *b.Keep
 	case *ast.BinaryOp:
 		b, ok := b.(*ast.BinaryOp)
 		return ok && a.Op == b.Op && equal(a.Left, b.Left) && equal(a.Right, b.Right)

@@ -15,7 +15,7 @@ dxpr <expression>
 ```
 
 ```shell
-dxpr d20 + 5
+dxpr 'd20 + 5'
 ```
 
 ## Expressions
@@ -26,29 +26,30 @@ dxpr d20 + 5
 dxpr d20
 dxpr 3d6
 dxpr d100
+dxpr 2d20kh1
+dxpr 2d20kl1
+dxpr 4d6dl1
 ```
 
 ### Operators
 
 ```shell
-dxpr d20 + 10
-dxpr 4d8 - 2
-dxpr 2d6 * 3
-dxpr d100 / 7
-dxpr 2^10
-dxpr 3 ** 2
-dxpr (d20 + 5) * 2
-dxpr (2 + 3) * 4
+dxpr 'd20 + 10'
+dxpr '4d8 - 2'
+dxpr '2d6 * 3'
+dxpr 'd100 / 7'
+dxpr '2^10'
+dxpr '3 ** 2'
+dxpr '(d20 + 5) * 2'
 ```
 
 ### Functions
 
 ```shell
-dxpr abs(-5)
-dxpr round(2^10)
-dxpr floor(7 // 2)
-dxpr ceil(7 // 2)
-dxpr min(3d6, 10)
-dxpr max(d20, 10)
-dxpr min(4, 2, 3)
+dxpr 'abs(-5)'
+dxpr 'round(2^10)'
+dxpr 'floor(7 // 2)'
+dxpr 'ceil(7 // 2)'
+dxpr 'min(3d6, 10)'
+dxpr 'max(d20, 10)'
 ```

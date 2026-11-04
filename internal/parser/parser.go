@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"github.com/shvixxl/dxpr/internal/ast"
+	"github.com/shvixxl/dxpr/internal/dice"
 	"github.com/shvixxl/dxpr/internal/funcs"
 	"github.com/shvixxl/dxpr/internal/ops"
 	"github.com/shvixxl/dxpr/internal/tokenizer"
@@ -138,7 +139,7 @@ func (p *parser) atom() (ast.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &ast.Dice{Count: 1, Sides: sides}, nil
+		return p.diceModifiers(&ast.Dice{Count: 1, Sides: sides})
 	}
 
 	n, err := p.number()
@@ -153,10 +154,40 @@ func (p *parser) atom() (ast.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &ast.Dice{Count: n, Sides: sides}, nil
+		return p.diceModifiers(&ast.Dice{Count: n, Sides: sides})
 	}
 
 	return &ast.Number{Value: n}, nil
+}
+
+// diceModifiers applies an optional modifier suffix (kh, kl, dh, dl) to a
+// dice node, e.g. 4d6dl1.
+func (p *parser) diceModifiers(d *ast.Dice) (ast.Node, error) {
+	tok := p.peek()
+	if tok.Kind != tokenizer.KindIdent {
+		return d, nil
+	}
+	mod, ok := dice.ModifiersByName[tok.Value]
+	if !ok {
+		return d, nil // not a modifier; let the caller report it if invalid
+	}
+	p.next()
+
+	n := 1
+	if mod.TakesNumber {
+		var err error
+		n, err = p.number()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	keep, err := mod.Resolve(d.Count, n)
+	if err != nil {
+		return nil, err
+	}
+	d.Keep = keep
+	return d, nil
 }
 
 // functionCall := ident '(' [expression (',' expression)*] ')'

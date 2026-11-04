@@ -52,7 +52,7 @@ var Floor = Function{
 // Min returns the smallest of its arguments.
 var Min = Function{
 	Name:    "min",
-	MinArgs: 1,
+	MinArgs: 2,
 	MaxArgs: -1,
 	Apply: func(args []int) (int, error) {
 		smallest := args[0]
@@ -68,7 +68,7 @@ var Min = Function{
 // Max returns the largest of its arguments.
 var Max = Function{
 	Name:    "max",
-	MinArgs: 1,
+	MinArgs: 2,
 	MaxArgs: -1,
 	Apply: func(args []int) (int, error) {
 		largest := args[0]

@@ -7,21 +7,22 @@ import (
 	"math/big"
 )
 
-// Roller rolls dice. It is an interface so evaluation can be tested
+// Dice rolls dice. It is an interface so evaluation can be tested
 // deterministically with a fixed source of rolls.
-type Roller interface {
+type Dice interface {
 	// Roll returns a random integer in [1, sides].
 	Roll(sides int) (int, error)
 }
 
-// CryptoRoller is the default Roller, using crypto/rand.
-type CryptoRoller struct{}
+// cryptoDice is the default Dice implementation, using crypto/rand.
+type cryptoDice struct{}
 
-// NewRoller returns the default dice roller.
-func NewRoller() Roller { return CryptoRoller{} }
+// NewDice returns the default dice roller. It uses crypto/rand and is safe
+// for game randomness.
+func NewDice() Dice { return cryptoDice{} }
 
-// Roll implements Roller.
-func (CryptoRoller) Roll(sides int) (int, error) {
+// Roll implements Dice.
+func (cryptoDice) Roll(sides int) (int, error) {
 	if sides < 1 {
 		return 0, fmt.Errorf("invalid dice: %d sides", sides)
 	}

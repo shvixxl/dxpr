@@ -16,10 +16,10 @@ func TestApply(t *testing.T) {
 		{"ceil", "ceil", []int{7}, 7},
 		{"floor", "floor", []int{7}, 7},
 		{"min", "min", []int{3, 1, 2}, 1},
-		{"min single", "min", []int{4}, 4},
+
 		{"min negative", "min", []int{-3, -1}, -3},
 		{"max", "max", []int{3, 1, 2}, 3},
-		{"max single", "max", []int{4}, 4},
+
 	}
 
 	for _, tt := range tests {
@@ -57,6 +57,7 @@ func TestArgCounts(t *testing.T) {
 		{"ceil too many", "ceil", 2, false},
 		{"floor too few", "floor", 0, false},
 		{"min variadic ok", "min", 5, true},
+		{"min single arg is error", "min", 1, false},
 		{"min too few", "min", 0, false},
 		{"max variadic ok", "max", 2, true},
 	}

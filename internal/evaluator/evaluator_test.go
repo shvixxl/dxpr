@@ -62,6 +62,11 @@ func TestEvaluateDice(t *testing.T) {
 			Left:  &ast.Dice{Count: 2, Sides: 6},
 			Right: &ast.Number{Value: 10},
 		}, []int{6, 2}, 18},
+		{"keep highest", &ast.Dice{Count: 3, Sides: 6, Keep: &ast.KeepRule{Keep: 1, Highest: true}}, []int{2, 5, 3}, 5},
+		{"keep lowest", &ast.Dice{Count: 3, Sides: 6, Keep: &ast.KeepRule{Keep: 1, Highest: false}}, []int{2, 5, 3}, 2},
+		{"keep highest two", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 2, Highest: true}}, []int{1, 5, 3, 6}, 11},
+		{"drop lowest one", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}, []int{1, 5, 3, 6}, 14},
+		{"keep all is sum", &ast.Dice{Count: 3, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}, []int{2, 5, 3}, 10},
 	}
 
 	for _, tt := range tests {

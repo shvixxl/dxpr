@@ -11,8 +11,8 @@ import (
 	"github.com/shvixxl/dxpr/internal/tokenizer"
 )
 
-// Roller rolls dice. Implement it to control randomness (e.g. in tests).
-type Roller interface {
+// Dice rolls dice. Implement it to control randomness (e.g. in tests).
+type Dice interface {
 	// Roll returns a random integer in [1, sides].
 	Roll(sides int) (int, error)
 }
@@ -21,12 +21,12 @@ type Roller interface {
 //
 // Dice are rolled using the default roller, which is cryptographically secure.
 func Evaluate(expr string) (int, error) {
-	return EvaluateWithRoller(expr, dice.NewRoller())
+	return EvaluateWithDice(expr, dice.NewDice())
 }
 
-// EvaluateWithRoller is like Evaluate but rolls dice using the given roller.
+// EvaluateWithDice is like Evaluate but rolls dice using the given Dice.
 // This allows callers to control randomness (e.g. for tests).
-func EvaluateWithRoller(expr string, roller Roller) (int, error) {
+func EvaluateWithDice(expr string, d Dice) (int, error) {
 	toks, err := tokenizer.Tokenize(expr)
 	if err != nil {
 		return 0, err
@@ -37,5 +37,5 @@ func EvaluateWithRoller(expr string, roller Roller) (int, error) {
 		return 0, err
 	}
 
-	return evaluator.Evaluate(node, roller)
+	return evaluator.Evaluate(node, d)
 }

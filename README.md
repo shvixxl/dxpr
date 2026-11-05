@@ -25,11 +25,10 @@ dxpr 'd20 + 5'
 ```shell
 dxpr d20
 dxpr 3d6
-dxpr d100
-dxpr 3d20kh2
+dxpr 3d20kh
 dxpr 4d6dl
 dxpr 'max(d6, 2)d6'
-dxpr '(d10, 5)kh1'
+dxpr '(d10, d10, 5)kh2'
 ```
 
 ### Operators

@@ -245,7 +245,7 @@ func (p *parser) poolSuffix(elements []ast.Node) (ast.Node, error) {
 	tok := p.peek()
 	mod, ok := dice.ModifiersByName[tok.Value]
 	if tok.Kind != tokenizer.KindIdent || !ok {
-		return nil, fmt.Errorf("expected pool modifier (kh, kl, dh, dl) after %q", tok.Value)
+		return nil, fmt.Errorf("expected pool modifier (kh, kl, dh, dl) after pool, got %s", tok.Describe())
 	}
 	p.next()
 	if len(elements) > dice.MaxCount {

@@ -29,6 +29,7 @@ dxpr 3d20kh
 dxpr 4d6dl
 dxpr 'max(d6, 2)d6'
 dxpr '(d10, d10, 5)kh2'
+dxpr '(3d6)d(3d10kh)'
 ```
 
 ### Operators

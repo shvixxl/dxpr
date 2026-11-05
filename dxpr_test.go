@@ -159,6 +159,9 @@ func TestDynamicDice(t *testing.T) {
 		{"count converted to int", "(7/2)d6", 9},          // 3d6
 		{"constant function operand", "max(3, 9)d2", 27},  // 9d2
 		{"dynamic dice in arithmetic", "(3+6)d(3-1) + 1", 28},
+		{"dynamic count and sides", "(3d6kh)d(3d10kh)", 9}, // count 3, sides 3, 3 rolls of 3
+		{"dynamic count from bare dice", "(2d4)d6", 18},    // 2d4 = 6 → 6d6 = 18
+		{"dynamic sides from pool", "2d(3d10kh)", 6},       // sides 3 → 2d3 = 6
 	}
 
 	for _, tt := range tests {
@@ -175,7 +178,7 @@ func TestDynamicDice(t *testing.T) {
 }
 
 func TestDynamicDiceErrors(t *testing.T) {
-	for _, in := range []string{"(2d6)d6", "2d(3d1)", "(1, 2)", "(1, 2)kz", "(3+6)d", "(0)d6"} {
+	for _, in := range []string{"(1, 2)", "(1, 2)kz", "(3+6)d", "(0)d6", "(2d6)d6kh1", "(d1-5)d6"} {
 		if _, err := dxpr.EvaluateWithDice(in, &seqRoller{rolls: []int{3}}); err == nil {
 			t.Errorf("EvaluateWithDice(%q) succeeded, want error", in)
 		}

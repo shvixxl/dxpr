@@ -46,6 +46,14 @@ func TestParse(t *testing.T) {
 		{"function with expression args", "max(1+1, 2^3)", &ast.FnCall{Name: "max", Args: []ast.Node{bin("+", num(1), num(1)), bin("^", num(2), num(3))}}},
 		{"function in arithmetic", "abs(-5) + 1", bin("+", &ast.FnCall{Name: "abs", Args: []ast.Node{&ast.UnaryOp{Op: "-", Operand: num(5)}}}, num(1))},
 		{"dice with expression count", "(3+6)d(3-1)", &ast.Dice{Count: 9, Sides: 2}},
+		{"dynamic count and sides", "(3d6kh)d(3d10kh)", &ast.Dice{
+			CountExpr: dicePool(6, 3, &ast.KeepRule{Keep: 1, Highest: true}),
+			SidesExpr: dicePool(10, 3, &ast.KeepRule{Keep: 1, Highest: true}),
+		}},
+		{"dynamic count from bare dice", "2d6d5", &ast.Dice{
+			CountExpr: &ast.Dice{Count: 2, Sides: 6},
+			Sides:     5,
+		}},
 		{"dice with expression sides", "2d(3-1)", &ast.Dice{Count: 2, Sides: 2}},
 		{"dice count converted to int", "(7/2)d6", &ast.Dice{Count: 3, Sides: 6}},
 		{"keep highest", "2d20kh1", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true})},
@@ -96,7 +104,6 @@ func TestParseErrors(t *testing.T) {
 		{"leading operator", "*3"},
 		{"double operator", "2+*3"},
 		{"dice without sides", "3d"},
-		{"trailing dice", "3d6d5"},
 		{"operator after dice", "3d6*"},
 		{"unbalanced paren", "(1+2"},
 		{"close paren without open", "1+2)"},
@@ -110,8 +117,8 @@ func TestParseErrors(t *testing.T) {
 
 		{"pool without modifier", "(1, 2)"},
 		{"pool with unknown modifier", "(1, 2)kz"},
-		{"dice in dice count", "(2d6)d6"},
-		{"dice in dice sides", "2d(3d1)"},
+		{"modifier with dynamic count", "(2d6)d6kh1"},
+		{"modifier with dynamic sides", "2d(3d1)kh1"},
 	}
 
 	for _, tt := range tests {
@@ -136,6 +143,14 @@ func dicePool(sides, n int, keep *ast.KeepRule) *ast.Pool {
 	return &ast.Pool{Elements: elements, Keep: *keep}
 }
 
+// equalOpt compares two optional AST nodes (either may be nil).
+func equalOpt(a, b ast.Node) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return equal(a, b)
+}
+
 // equal compares two ASTs structurally.
 func equal(a, b ast.Node) bool {
 	switch a := a.(type) {
@@ -144,7 +159,8 @@ func equal(a, b ast.Node) bool {
 		return ok && a.Value == b.Value
 	case *ast.Dice:
 		b, ok := b.(*ast.Dice)
-		return ok && a.Count == b.Count && a.Sides == b.Sides
+		return ok && a.Count == b.Count && a.Sides == b.Sides &&
+			equalOpt(a.CountExpr, b.CountExpr) && equalOpt(a.SidesExpr, b.SidesExpr)
 	case *ast.Pool:
 		b, ok := b.(*ast.Pool)
 		if !ok || len(a.Elements) != len(b.Elements) {

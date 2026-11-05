@@ -29,6 +29,28 @@ func Evaluate(node ast.Node) (int, error) {
 	return int(math.Floor(v)), nil
 }
 
+// IsConstant reports whether node's value is known before any dice are
+// rolled, i.e. it contains no dice rolls or pools.
+func IsConstant(node ast.Node) bool {
+	switch n := node.(type) {
+	case *ast.Number:
+		return true
+	case *ast.BinaryOp:
+		return IsConstant(n.Left) && IsConstant(n.Right)
+	case *ast.UnaryOp:
+		return IsConstant(n.Operand)
+	case *ast.FnCall:
+		for _, arg := range n.Args {
+			if !IsConstant(arg) {
+				return false
+			}
+		}
+		return true
+	default: // Dice, Pool, unknown nodes
+		return false
+	}
+}
+
 func evalConst(node ast.Node) (float64, error) {
 	switch n := node.(type) {
 	case *ast.Number:

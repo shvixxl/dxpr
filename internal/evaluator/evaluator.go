@@ -38,6 +38,19 @@ func Evaluate(node ast.Node, roller Dice) (int, error) {
 	return int(math.Floor(v)), nil
 }
 
+// diceOperand resolves a dice operand: the parser-folded int, or the
+// dynamic expression evaluated once and floored to int.
+func diceOperand(folded int, expr ast.Node, roller Dice) (int, error) {
+	if expr == nil {
+		return folded, nil
+	}
+	v, err := evalValue(expr, roller)
+	if err != nil {
+		return 0, err
+	}
+	return int(math.Floor(v)), nil
+}
+
 // evalValue computes the value of an expression node, preserving fractions.
 func evalValue(node ast.Node, roller Dice) (float64, error) {
 	switch n := node.(type) {
@@ -45,21 +58,31 @@ func evalValue(node ast.Node, roller Dice) (float64, error) {
 		return float64(n.Value), nil
 
 	case *ast.Dice:
-		if n.Count < 1 {
-			return 0, fmt.Errorf("invalid dice count: %d", n.Count)
+		// Dynamic operands (if any) are evaluated once per group, then the
+		// dice are rolled with the resolved count and sides.
+		count, err := diceOperand(n.Count, n.CountExpr, roller)
+		if err != nil {
+			return 0, err
 		}
-		if n.Count > dice.MaxCount {
-			return 0, fmt.Errorf("dice count %d too large (max %d)", n.Count, dice.MaxCount)
+		sides, err := diceOperand(n.Sides, n.SidesExpr, roller)
+		if err != nil {
+			return 0, err
 		}
-		if n.Sides < 1 {
-			return 0, fmt.Errorf("invalid dice sides: %d", n.Sides)
+		if count < 1 {
+			return 0, fmt.Errorf("invalid dice count: %d", count)
 		}
-		if n.Sides > dice.MaxSides {
-			return 0, fmt.Errorf("dice sides %d too large (max %d)", n.Sides, dice.MaxSides)
+		if count > dice.MaxCount {
+			return 0, fmt.Errorf("dice count %d too large (max %d)", count, dice.MaxCount)
+		}
+		if sides < 1 {
+			return 0, fmt.Errorf("invalid dice sides: %d", sides)
+		}
+		if sides > dice.MaxSides {
+			return 0, fmt.Errorf("dice sides %d too large (max %d)", sides, dice.MaxSides)
 		}
 		total := 0.0
-		for i := 0; i < n.Count; i++ {
-			roll, err := roller.Roll(n.Sides)
+		for i := 0; i < count; i++ {
+			roll, err := roller.Roll(sides)
 			if err != nil {
 				return 0, err
 			}

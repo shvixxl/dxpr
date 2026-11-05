@@ -182,20 +182,37 @@ func (p *parser) atom() (ast.Node, error) {
 	return &ast.Number{Value: n}, nil
 }
 
-// diceSuffix parses what follows a consumed 'd' token: the sides (a number or
-// a parenthesized constant expression) and an optional pool modifier
-// (kh/kl/dh/dl). countNode is a constant expression for the number of dice.
-// The result is a pure Dice node, or a Pool when a modifier is present.
+// diceSuffix parses what follows a consumed 'd' token: the sides (a number
+// or a parenthesized expression) and an optional pool modifier (kh/kl/dh/dl).
+// countNode is an expression for the number of dice. Constant operands are
+// folded to ints; dice-containing ones are kept as dynamic expressions,
+// evaluated once per group at roll time. The result is a Dice node, or a Pool
+// when a modifier is present (modifiers require constant operands).
 func (p *parser) diceSuffix(countNode ast.Node) (ast.Node, error) {
-	count, err := p.constInt(countNode)
+	d := &ast.Dice{}
+	if consts.IsConstant(countNode) {
+		count, err := consts.Evaluate(countNode)
+		if err != nil {
+			return nil, fmt.Errorf("invalid dice count: %v", err)
+		}
+		d.Count = count
+	} else {
+		d.CountExpr = countNode
+	}
+
+	sidesNode, err := p.diceSides()
 	if err != nil {
 		return nil, err
 	}
-	sides, err := p.diceSides()
-	if err != nil {
-		return nil, err
+	if consts.IsConstant(sidesNode) {
+		sides, err := consts.Evaluate(sidesNode)
+		if err != nil {
+			return nil, fmt.Errorf("invalid dice sides: %v", err)
+		}
+		d.Sides = sides
+	} else {
+		d.SidesExpr = sidesNode
 	}
-	d := &ast.Dice{Count: count, Sides: sides}
 
 	tok := p.peek()
 	if tok.Kind != tokenizer.KindIdent {
@@ -207,6 +224,12 @@ func (p *parser) diceSuffix(countNode ast.Node) (ast.Node, error) {
 	}
 	p.next()
 
+	// Modifiers select among individual rolls, so the dice must expand into
+	// a pool at parse time; that requires constant count and sides.
+	if d.CountExpr != nil || d.SidesExpr != nil {
+		return nil, fmt.Errorf("dice modifiers require constant count and sides")
+	}
+	count, sides := d.Count, d.Sides
 	if count > dice.MaxCount {
 		return nil, fmt.Errorf("dice count %d too large (max %d)", count, dice.MaxCount)
 	}
@@ -220,24 +243,25 @@ func (p *parser) diceSuffix(countNode ast.Node) (ast.Node, error) {
 }
 
 // diceSides parses the sides of a dice roll: a number ("d6") or a
-// parenthesized constant expression ("d(3-1)").
-func (p *parser) diceSides() (int, error) {
+// parenthesized expression ("d(3-1)", "d(3d10kh)"). It returns the
+// expression node; the caller folds constants and keeps the rest dynamic.
+func (p *parser) diceSides() (ast.Node, error) {
 	if p.peek().Kind == tokenizer.KindLParen {
 		p.next()
 		inner, err := p.expression(0)
 		if err != nil {
-			return 0, err
+			return nil, err
 		}
 		if _, err := p.expect(tokenizer.KindRParen); err != nil {
-			return 0, err
+			return nil, err
 		}
-		return p.constInt(inner)
+		return inner, nil
 	}
 	sides, err := p.number()
 	if err != nil {
-		return 0, fmt.Errorf("expected number of sides after 'd'")
+		return nil, fmt.Errorf("expected number of sides after 'd'")
 	}
-	return sides, nil
+	return &ast.Number{Value: sides}, nil
 }
 
 // poolSuffix applies a mandatory pool modifier (kh/kl/dh/dl) to elements.

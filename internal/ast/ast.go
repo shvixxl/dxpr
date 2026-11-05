@@ -18,11 +18,17 @@ type KeepRule struct {
 }
 
 // Dice is a roll of Count dice, each with Sides, summed. The parser sets
-// Count to 1 when omitted ("d20" == "1d20"). Count and Sides may come from
-// constant expressions: "(3+6)d(3-1)" == "9d2".
+// Count to 1 when omitted ("d20" == "1d20").
+//
+// Count and Sides may instead come from expressions (CountExpr/SidesExpr),
+// evaluated once per group at roll time: "(3d6kh)d(3d10kh)" first rolls the
+// count and the sides, then rolls that many dice of that size. Constant
+// operands are folded by the parser, leaving the Expr fields nil.
 type Dice struct {
-	Count int
-	Sides int
+	Count     int
+	CountExpr Node // dynamic count; nil when Count is folded
+	Sides     int
+	SidesExpr Node // dynamic sides; nil when Sides is folded
 }
 
 // Pool is a collection of expressions summed together. Keep selects a

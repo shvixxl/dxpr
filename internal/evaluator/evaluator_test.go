@@ -65,6 +65,12 @@ func TestEvaluateDice(t *testing.T) {
 		want  int
 	}{
 		{"single die", &ast.Dice{Count: 1, Sides: 6}, []int{4}, 4},
+		{"dynamic count", &ast.Dice{CountExpr: &ast.Number{Value: 3}, Sides: 6}, []int{1, 5, 3}, 9},
+		{"dynamic sides", &ast.Dice{Count: 2, SidesExpr: &ast.Number{Value: 6}}, []int{1, 5}, 6},
+		{"dynamic count and sides", &ast.Dice{
+			CountExpr: &ast.Dice{Count: 1, Sides: 6},
+			SidesExpr: &ast.Dice{Count: 1, Sides: 10},
+		}, []int{2, 4, 3, 3}, 6},
 		{"multiple dice summed", &ast.Dice{Count: 3, Sides: 6}, []int{1, 5, 3}, 9},
 		{"dice in arithmetic", &ast.BinaryOp{
 			Op:    "+",

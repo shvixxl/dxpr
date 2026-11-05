@@ -2,39 +2,37 @@ package funcs
 
 import (
 	"testing"
-
-	"github.com/shvixxl/dxpr/internal/value"
 )
 
-func i(n int64) value.Value { return value.FromInt(n) }
+func i(n int64) float64 { return float64(n) }
 
-func f(x float64) value.Value { return value.FromFloat(x) }
+func f(x float64) float64 { return x }
 
 func TestApply(t *testing.T) {
 	tests := []struct {
 		name string
 		fn   string
-		args []value.Value
-		want value.Value
+		args []float64
+		want float64
 	}{
-		{"abs positive", "abs", []value.Value{i(5)}, i(5)},
-		{"abs negative", "abs", []value.Value{i(-5)}, i(5)},
-		{"abs zero", "abs", []value.Value{i(0)}, i(0)},
-		{"abs float", "abs", []value.Value{f(-2.5)}, f(2.5)},
-		{"round int", "round", []value.Value{i(7)}, i(7)},
-		{"round half up", "round", []value.Value{f(3.5)}, i(4)},
-		{"round half away from zero", "round", []value.Value{f(-3.5)}, i(-4)},
-		{"floor int", "floor", []value.Value{i(7)}, i(7)},
-		{"floor fraction", "floor", []value.Value{f(3.5)}, i(3)},
-		{"floor negative fraction", "floor", []value.Value{f(-3.5)}, i(-4)},
-		{"ceil int", "ceil", []value.Value{i(7)}, i(7)},
-		{"ceil fraction", "ceil", []value.Value{f(3.5)}, i(4)},
-		{"ceil negative fraction", "ceil", []value.Value{f(-3.5)}, i(-3)},
-		{"min", "min", []value.Value{i(3), i(1), i(2)}, i(1)},
-		{"min mixed int float", "min", []value.Value{i(3), f(1.5)}, f(1.5)},
-		{"min negative", "min", []value.Value{i(-3), i(-1)}, i(-3)},
-		{"max", "max", []value.Value{i(3), i(1), i(2)}, i(3)},
-		{"max mixed", "max", []value.Value{i(3), f(3.5)}, f(3.5)},
+		{"abs positive", "abs", []float64{i(5)}, i(5)},
+		{"abs negative", "abs", []float64{i(-5)}, i(5)},
+		{"abs zero", "abs", []float64{i(0)}, i(0)},
+		{"abs float", "abs", []float64{f(-2.5)}, f(2.5)},
+		{"round int", "round", []float64{i(7)}, i(7)},
+		{"round half up", "round", []float64{f(3.5)}, i(4)},
+		{"round half away from zero", "round", []float64{f(-3.5)}, i(-4)},
+		{"floor int", "floor", []float64{i(7)}, i(7)},
+		{"floor fraction", "floor", []float64{f(3.5)}, i(3)},
+		{"floor negative fraction", "floor", []float64{f(-3.5)}, i(-4)},
+		{"ceil int", "ceil", []float64{i(7)}, i(7)},
+		{"ceil fraction", "ceil", []float64{f(3.5)}, i(4)},
+		{"ceil negative fraction", "ceil", []float64{f(-3.5)}, i(-3)},
+		{"min", "min", []float64{i(3), i(1), i(2)}, i(1)},
+		{"min mixed int float", "min", []float64{i(3), f(1.5)}, f(1.5)},
+		{"min negative", "min", []float64{i(-3), i(-1)}, i(-3)},
+		{"max", "max", []float64{i(3), i(1), i(2)}, i(3)},
+		{"max mixed", "max", []float64{i(3), f(3.5)}, f(3.5)},
 	}
 
 	for _, tt := range tests {

@@ -3,45 +3,20 @@ package ops
 import (
 	"fmt"
 	"math"
-
-	"github.com/shvixxl/dxpr/internal/value"
 )
-
-// maxInt64 is the largest int64 value.
-const maxInt64 = int64(math.MaxInt64)
 
 // Add is the addition operator.
 var Add = Binary{
 	Symbol:       "+",
 	BindingPower: BPAdditive,
-	Apply: func(a, b value.Value) (value.Value, error) {
-		if a.IsInt() && b.IsInt() {
-			x, y := a.Int(), b.Int()
-			r := x + y
-			if (x > 0) == (y > 0) && (r > 0) != (x > 0) {
-				return value.Value{}, fmt.Errorf("integer overflow in %d + %d", x, y)
-			}
-			return value.FromInt(r), nil
-		}
-		return value.FromFloat(a.Float() + b.Float()), nil
-	},
+	Apply:        func(a, b float64) (float64, error) { return a + b, nil },
 }
 
 // Sub is the subtraction operator.
 var Sub = Binary{
 	Symbol:       "-",
 	BindingPower: BPAdditive,
-	Apply: func(a, b value.Value) (value.Value, error) {
-		if a.IsInt() && b.IsInt() {
-			x, y := a.Int(), b.Int()
-			r := x - y
-			if x != 0 && y != 0 && (x > 0) != (y > 0) && (r > 0) != (x > 0) {
-				return value.Value{}, fmt.Errorf("integer overflow in %d - %d", x, y)
-			}
-			return value.FromInt(r), nil
-		}
-		return value.FromFloat(a.Float() - b.Float()), nil
-	},
+	Apply:        func(a, b float64) (float64, error) { return a - b, nil },
 }
 
 // Mul is the multiplication operator.
@@ -49,53 +24,32 @@ var Mul = Binary{
 	Symbol:       "*",
 	Aliases:      []string{"x", "X"},
 	BindingPower: BPMultiplicative,
-	Apply: func(a, b value.Value) (value.Value, error) {
-		if a.IsInt() && b.IsInt() {
-			x, y := a.Int(), b.Int()
-			if x != 0 && y != 0 && x*y/y != x {
-				return value.Value{}, fmt.Errorf("integer overflow in %d * %d", x, y)
-			}
-			return value.FromInt(x * y), nil
-		}
-		return value.FromFloat(a.Float() * b.Float()), nil
-	},
+	Apply:        func(a, b float64) (float64, error) { return a * b, nil },
 }
 
-// Div is true division: it produces an integer when the division is exact
-// and a float otherwise (7 / 2 = 3.5).
+// Div is true division: 7 / 2 = 3.5. Fractional results floor to int only
+// at the end of evaluation.
 var Div = Binary{
 	Symbol:       "/",
 	BindingPower: BPMultiplicative,
-	Apply: func(a, b value.Value) (value.Value, error) {
-		if a.IsInt() && b.IsInt() {
-			x, y := a.Int(), b.Int()
-			if y == 0 {
-				return value.Value{}, fmt.Errorf("division by zero")
-			}
-			if x%y == 0 {
-				return value.FromInt(x / y), nil
-			}
+	Apply: func(a, b float64) (float64, error) {
+		if b == 0 {
+			return 0, fmt.Errorf("division by zero")
 		}
-		if b.Float() == 0 {
-			return value.Value{}, fmt.Errorf("division by zero")
-		}
-		return value.FromFloat(a.Float() / b.Float()), nil
+		return a / b, nil
 	},
 }
 
-// FloorDiv is floor division: it always rounds down to an integer.
+// FloorDiv is floor division: it always rounds down (7 // 2 = 3,
+// -7 // 2 = -4).
 var FloorDiv = Binary{
 	Symbol:       "//",
 	BindingPower: BPMultiplicative,
-	Apply: func(a, b value.Value) (value.Value, error) {
-		if b.Float() == 0 {
-			return value.Value{}, fmt.Errorf("division by zero")
+	Apply: func(a, b float64) (float64, error) {
+		if b == 0 {
+			return 0, fmt.Errorf("division by zero")
 		}
-		q := math.Floor(a.Float() / b.Float())
-		if q > float64(maxInt64) || q < float64(-maxInt64-1) {
-			return value.Value{}, fmt.Errorf("integer overflow in floor division")
-		}
-		return value.FromInt(int64(q)), nil
+		return math.Floor(a / b), nil
 	},
 }
 
@@ -103,15 +57,14 @@ var FloorDiv = Binary{
 var Mod = Binary{
 	Symbol:       "%",
 	BindingPower: BPMultiplicative,
-	Apply: func(a, b value.Value) (value.Value, error) {
-		if !a.IsInt() || !b.IsInt() {
-			return value.Value{}, fmt.Errorf("modulus requires integer operands")
+	Apply: func(a, b float64) (float64, error) {
+		if a != math.Trunc(a) || b != math.Trunc(b) {
+			return 0, fmt.Errorf("modulus requires integer operands")
 		}
-		x, y := a.Int(), b.Int()
-		if y == 0 {
-			return value.Value{}, fmt.Errorf("division by zero")
+		if b == 0 {
+			return 0, fmt.Errorf("division by zero")
 		}
-		return value.FromInt(x % y), nil
+		return math.Mod(a, b), nil
 	},
 }
 
@@ -120,45 +73,20 @@ var Mod = Binary{
 var Negate = Unary{
 	Symbol:       "-",
 	BindingPower: BPMultiplicative,
-	Apply: func(operand value.Value) (value.Value, error) {
-		if operand.IsInt() {
-			return value.FromInt(-operand.Int()), nil
-		}
-		return value.FromFloat(-operand.Float()), nil
-	},
+	Apply:       func(operand float64) (float64, error) { return -operand, nil },
 }
 
-// powMaxExp bounds integer exponents to keep evaluation fast and prevent
-// unbounded loops on adversarial input such as 2^2000000000.
-const powMaxExp = 63
-
 // Pow is the exponentiation operator. It is right-associative.
-// Integer bases with non-negative integer exponents stay exact; anything
-// else (negative exponents, float operands) produces a float.
 var Pow = Binary{
 	Symbol:       "^",
 	Aliases:      []string{"**"},
 	BindingPower: BPPower,
 	RightAssoc:   true,
-	Apply: func(base, exp value.Value) (value.Value, error) {
-		if base.IsInt() && exp.IsInt() && exp.Int() >= 0 {
-			b, e := base.Int(), exp.Int()
-			if e > powMaxExp {
-				return value.Value{}, fmt.Errorf("exponent %d too large (max %d)", e, powMaxExp)
-			}
-			result := int64(1)
-			for i := int64(0); i < e; i++ {
-				if result != 0 && b != 0 && result*b/b != result {
-					return value.Value{}, fmt.Errorf("integer overflow in %d^%d", b, e)
-				}
-				result *= b
-			}
-			return value.FromInt(result), nil
-		}
-		r := math.Pow(base.Float(), exp.Float())
+	Apply: func(base, exp float64) (float64, error) {
+		r := math.Pow(base, exp)
 		if math.IsInf(r, 0) || math.IsNaN(r) {
-			return value.Value{}, fmt.Errorf("result out of range in %v^%v", base.Float(), exp.Float())
+			return 0, fmt.Errorf("result out of range in %v^%v", base, exp)
 		}
-		return value.FromFloat(r), nil
+		return r, nil
 	},
 }

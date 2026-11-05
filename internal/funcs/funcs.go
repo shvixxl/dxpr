@@ -1,14 +1,12 @@
 // Package funcs defines the function registry.
 //
 // Functions are called by name with parenthesized, comma-separated arguments:
-// min(3d6, 10). They are pure: Apply maps evaluated integer arguments to an
-// integer result and never touches randomness.
+// min(3d6, 10). They are pure: Apply maps evaluated numeric arguments to a
+// numeric result and never touches randomness.
 package funcs
 
 import (
 	"fmt"
-
-	"github.com/shvixxl/dxpr/internal/value"
 )
 
 // Function is a named callable.
@@ -20,7 +18,7 @@ type Function struct {
 	// MaxArgs is the maximum number of arguments, or -1 for unbounded.
 	MaxArgs int
 	// Apply computes the function's result.
-	Apply func(args []value.Value) (value.Value, error)
+	Apply func(args []float64) (float64, error)
 }
 
 // CheckArgCount reports whether n is a valid argument count for the function.

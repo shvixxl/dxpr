@@ -54,7 +54,7 @@ func pool(keep *ast.KeepRule, n int) *ast.Pool {
 	for i := range elements {
 		elements[i] = &ast.Dice{Count: 1, Sides: 6}
 	}
-	return &ast.Pool{Elements: elements, Keep: keep}
+	return &ast.Pool{Elements: elements, Keep: *keep}
 }
 
 func TestEvaluateDice(t *testing.T) {
@@ -78,12 +78,15 @@ func TestEvaluateDice(t *testing.T) {
 		{"keep all is sum", pool(&ast.KeepRule{Keep: 3, Highest: true}, 3), []int{2, 5, 3}, 10},
 		{"heterogeneous pool keep highest", &ast.Pool{
 			Elements: []ast.Node{&ast.Dice{Count: 1, Sides: 6}, &ast.Dice{Count: 1, Sides: 10}, &ast.Number{Value: 10}},
-			Keep:     &ast.KeepRule{Keep: 1, Highest: true},
+			Keep:     ast.KeepRule{Keep: 1, Highest: true},
 		}, []int{2, 9}, 10},
 		{"heterogeneous pool keep lowest", &ast.Pool{
 			Elements: []ast.Node{&ast.Dice{Count: 1, Sides: 6}, &ast.Dice{Count: 1, Sides: 10}, &ast.Number{Value: 10}},
-			Keep:     &ast.KeepRule{Keep: 1, Highest: false},
+			Keep:     ast.KeepRule{Keep: 1, Highest: false},
 		}, []int{2, 9}, 2},
+		{"pool without keep sums all", &ast.Pool{
+			Elements: []ast.Node{&ast.Dice{Count: 1, Sides: 6}, &ast.Dice{Count: 1, Sides: 6}, &ast.Number{Value: 10}},
+		}, []int{2, 9}, 21},
 	}
 
 	for _, tt := range tests {
@@ -111,7 +114,6 @@ func TestEvaluateErrors(t *testing.T) {
 		{"count too large", &ast.Dice{Count: 1001, Sides: 6}},
 		{"sides too large", &ast.Dice{Count: 1, Sides: 10001}},
 		{"keep exceeds pool size", pool(&ast.KeepRule{Keep: 4, Highest: true}, 3)},
-		{"keep zero", pool(&ast.KeepRule{Keep: 0, Highest: true}, 3)},
 		{"empty pool", &ast.Pool{}},
 		{"unknown operator", &ast.BinaryOp{Op: "<>", Left: &ast.Number{Value: 1}, Right: &ast.Number{Value: 2}}},
 		{"unknown unary operator", &ast.UnaryOp{Op: "<>", Operand: &ast.Number{Value: 1}}},

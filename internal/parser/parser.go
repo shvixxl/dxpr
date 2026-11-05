@@ -14,8 +14,8 @@ import (
 	"strconv"
 
 	"github.com/shvixxl/dxpr/internal/ast"
+	"github.com/shvixxl/dxpr/internal/consts"
 	"github.com/shvixxl/dxpr/internal/dice"
-	"github.com/shvixxl/dxpr/internal/evaluator"
 	"github.com/shvixxl/dxpr/internal/funcs"
 	"github.com/shvixxl/dxpr/internal/ops"
 	"github.com/shvixxl/dxpr/internal/tokenizer"
@@ -169,7 +169,6 @@ func (p *parser) atom() (ast.Node, error) {
 		}
 	}
 
-
 	// Bare "d20" / "d(3-1)": count defaults to 1.
 	if p.peek().Kind == tokenizer.KindDice {
 		p.next()
@@ -208,8 +207,8 @@ func (p *parser) diceSuffix(countNode ast.Node) (ast.Node, error) {
 	}
 	p.next()
 
-	if count > evaluator.MaxDiceCount {
-		return nil, fmt.Errorf("dice count %d too large (max %d)", count, evaluator.MaxDiceCount)
+	if count > dice.MaxCount {
+		return nil, fmt.Errorf("dice count %d too large (max %d)", count, dice.MaxCount)
 	}
 	// A modifier selects among individual rolls, so the dice expand into a
 	// pool: "4d6kh1" becomes a pool of four d6 rolls.
@@ -249,8 +248,8 @@ func (p *parser) poolSuffix(elements []ast.Node) (ast.Node, error) {
 		return nil, fmt.Errorf("expected pool modifier (kh, kl, dh, dl) after %q", tok.Value)
 	}
 	p.next()
-	if len(elements) > evaluator.MaxDiceCount {
-		return nil, fmt.Errorf("pool size %d too large (max %d)", len(elements), evaluator.MaxDiceCount)
+	if len(elements) > dice.MaxCount {
+		return nil, fmt.Errorf("pool size %d too large (max %d)", len(elements), dice.MaxCount)
 	}
 	return p.applyModifier(mod, elements)
 }
@@ -285,27 +284,18 @@ func (p *parser) applyModifier(mod dice.Modifier, elements []ast.Node) (ast.Node
 	if err != nil {
 		return nil, err
 	}
-	return &ast.Pool{Elements: elements, Keep: keep}, nil
+	return &ast.Pool{Elements: elements, Keep: *keep}, nil
 }
 
 // constInt evaluates a constant expression to an int. Dice rolls are
 // rejected: operands like counts and sides must be known before rolling.
 // Fractional results are converted to int (floored).
 func (p *parser) constInt(n ast.Node) (int, error) {
-	v, err := evaluator.Evaluate(n, noDiceRoller{})
+	v, err := consts.Evaluate(n)
 	if err != nil {
 		return 0, fmt.Errorf("must be a constant expression: %v", err)
 	}
 	return v, nil
-}
-
-// noDiceRoller rejects dice rolls; the parser uses it to evaluate constant
-// expressions.
-type noDiceRoller struct{}
-
-// Roll implements the evaluator's Dice interface.
-func (noDiceRoller) Roll(int) (int, error) {
-	return 0, fmt.Errorf("dice rolls are not allowed in this context")
 }
 
 // diceModifiers applies an optional modifier suffix (kh, kl, dh, dl) to a

@@ -106,12 +106,17 @@ func isPunct(r rune) bool {
 }
 
 // longestOperatorMatch returns the longest registered operator symbol that is
-// a prefix of run. It iterates runes so multi-byte characters are never split.
+// a prefix of run. Both binary and unary registries are consulted so a
+// unary-only operator lexes too. It iterates runes so multi-byte characters
+// are never split.
 func longestOperatorMatch(run string) (string, bool) {
 	runes := []rune(run)
 	for size := len(runes); size > 0; size-- {
 		prefix := string(runes[:size])
 		if _, ok := ops.BinaryBySymbol[prefix]; ok {
+			return prefix, true
+		}
+		if _, ok := ops.UnaryBySymbol[prefix]; ok {
 			return prefix, true
 		}
 	}

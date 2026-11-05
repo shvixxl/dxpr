@@ -25,13 +25,13 @@ type Dice struct {
 	Sides int
 }
 
-// Pool is a collection of expressions summed together. Keep optionally
-// selects a subset of the evaluated elements (kh/kl/dh/dl), e.g.
-// "4d6kh1" is a pool of four d6 rolls keeping the highest, and
-// "(d6, d10, 10)kh" is a heterogeneous pool keeping the highest.
+// Pool is a collection of expressions summed together. Keep selects a
+// subset of the evaluated elements (kh/kl/dh/dl); its zero value keeps all.
+// The parser always sets Keep, but the zero value behaves as "no selection"
+// so hand-built pools stay valid.
 type Pool struct {
 	Elements []Node
-	Keep     *KeepRule
+	Keep     KeepRule
 }
 
 // BinaryOp is a binary operation (e.g. +, *, ^).

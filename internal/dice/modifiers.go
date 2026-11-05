@@ -26,7 +26,7 @@ func keepRange(mod string, n, max int) error {
 
 // KeepHighest keeps the highest n rolls (kh).
 var KeepHighest = Modifier{
-	Name:        "kh",
+	Name: "kh",
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("kh", n, count); err != nil {
 			return nil, err
@@ -37,7 +37,7 @@ var KeepHighest = Modifier{
 
 // KeepLowest keeps the lowest n rolls (kl).
 var KeepLowest = Modifier{
-	Name:        "kl",
+	Name: "kl",
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("kl", n, count); err != nil {
 			return nil, err
@@ -47,9 +47,14 @@ var KeepLowest = Modifier{
 }
 
 // DropHighest drops the highest n rolls, keeping the rest (dh).
+// On a single-element pool there is nothing to drop, so it is a no-op that
+// keeps the roll.
 var DropHighest = Modifier{
-	Name:        "dh",
+	Name: "dh",
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
+		if count == 1 {
+			return &ast.KeepRule{Keep: 1, Highest: true}, nil
+		}
 		if err := keepRange("dh", n, count-1); err != nil {
 			return nil, err
 		}
@@ -58,9 +63,14 @@ var DropHighest = Modifier{
 }
 
 // DropLowest drops the lowest n rolls, keeping the rest (dl).
+// On a single-element pool there is nothing to drop, so it is a no-op that
+// keeps the roll.
 var DropLowest = Modifier{
-	Name:        "dl",
+	Name: "dl",
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
+		if count == 1 {
+			return &ast.KeepRule{Keep: 1, Highest: true}, nil
+		}
 		if err := keepRange("dl", n, count-1); err != nil {
 			return nil, err
 		}

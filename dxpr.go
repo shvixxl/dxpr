@@ -12,6 +12,9 @@ import (
 )
 
 // Dice rolls dice. Implement it to control randomness (e.g. in tests).
+//
+// Roll is trusted: results are not validated, so a custom implementation
+// returning values outside [1, sides] silently produces out-of-range totals.
 type Dice interface {
 	// Roll returns a random integer in [1, sides].
 	Roll(sides int) (int, error)

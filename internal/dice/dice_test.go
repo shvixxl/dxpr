@@ -89,8 +89,8 @@ func TestModifierResolve(t *testing.T) {
 		{"kh too many", "kh", 4, 5, nil, nil},
 		{"kl zero", "kl", 4, 0, nil, nil},
 		{"kh on single die", "kh", 1, 1, intPtr(1), boolPtr(true)},
-		{"dh on single die", "dh", 1, 1, nil, nil},
-		{"dl on single die", "dl", 1, 1, nil, nil},
+		{"dh on single die is a no-op", "dh", 1, 1, intPtr(1), boolPtr(true)},
+		{"dl on single die is a no-op", "dl", 1, 1, intPtr(1), boolPtr(true)},
 	}
 
 	for _, tt := range tests {

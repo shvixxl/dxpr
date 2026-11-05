@@ -7,16 +7,16 @@ import (
 	"sort"
 
 	"github.com/shvixxl/dxpr/internal/ast"
+	"github.com/shvixxl/dxpr/internal/dice"
 	"github.com/shvixxl/dxpr/internal/funcs"
 	"github.com/shvixxl/dxpr/internal/ops"
 )
 
-// Resource limits for dice evaluation. They keep adversarial input such as
-// 999999999d6 from consuming unbounded memory and time. The parser also
-// enforces them when resolving constant dice operands and building pools.
+// Result bounds. Results are clamped to the int32 range so behavior is
+// identical on 32-bit platforms, where int is 32 bits wide.
 const (
-	MaxDiceCount = 1000
-	MaxDiceSides = 10000
+	maxResult = math.MaxInt32
+	minResult = math.MinInt32
 )
 
 // Dice is satisfied by anything that can roll dice.
@@ -32,8 +32,8 @@ func Evaluate(node ast.Node, roller Dice) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if math.IsNaN(v) || math.IsInf(v, 0) || v >= math.MaxInt64 || v <= math.MinInt64 {
-		return 0, fmt.Errorf("result %v out of range", v)
+	if math.IsNaN(v) || math.IsInf(v, 0) || v > maxResult || v < minResult {
+		return 0, fmt.Errorf("result %v out of range (max %d)", v, maxResult)
 	}
 	return int(math.Floor(v)), nil
 }
@@ -48,14 +48,14 @@ func evalValue(node ast.Node, roller Dice) (float64, error) {
 		if n.Count < 1 {
 			return 0, fmt.Errorf("invalid dice count: %d", n.Count)
 		}
-		if n.Count > MaxDiceCount {
-			return 0, fmt.Errorf("dice count %d too large (max %d)", n.Count, MaxDiceCount)
+		if n.Count > dice.MaxCount {
+			return 0, fmt.Errorf("dice count %d too large (max %d)", n.Count, dice.MaxCount)
 		}
 		if n.Sides < 1 {
 			return 0, fmt.Errorf("invalid dice sides: %d", n.Sides)
 		}
-		if n.Sides > MaxDiceSides {
-			return 0, fmt.Errorf("dice sides %d too large (max %d)", n.Sides, MaxDiceSides)
+		if n.Sides > dice.MaxSides {
+			return 0, fmt.Errorf("dice sides %d too large (max %d)", n.Sides, dice.MaxSides)
 		}
 		total := 0.0
 		for i := 0; i < n.Count; i++ {
@@ -71,8 +71,8 @@ func evalValue(node ast.Node, roller Dice) (float64, error) {
 		if len(n.Elements) < 1 {
 			return 0, fmt.Errorf("invalid pool: no elements")
 		}
-		if len(n.Elements) > MaxDiceCount {
-			return 0, fmt.Errorf("pool size %d too large (max %d)", len(n.Elements), MaxDiceCount)
+		if len(n.Elements) > dice.MaxCount {
+			return 0, fmt.Errorf("pool size %d too large (max %d)", len(n.Elements), dice.MaxCount)
 		}
 		vals := make([]float64, len(n.Elements))
 		for i, el := range n.Elements {
@@ -82,8 +82,8 @@ func evalValue(node ast.Node, roller Dice) (float64, error) {
 			}
 			vals[i] = v
 		}
-		if n.Keep != nil {
-			if n.Keep.Keep < 1 || n.Keep.Keep > len(vals) {
+		if n.Keep.Keep > 0 {
+			if n.Keep.Keep > len(vals) {
 				return 0, fmt.Errorf("invalid keep count: %d (pool size %d)", n.Keep.Keep, len(vals))
 			}
 			sort.Float64s(vals)

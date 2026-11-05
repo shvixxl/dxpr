@@ -2,7 +2,6 @@ package ops
 
 import (
 	"fmt"
-
 )
 
 // Binary is a binary operator.

@@ -7,6 +7,17 @@ import (
 	"math/big"
 )
 
+// Resource limits for dice evaluation. They keep adversarial input such as
+// 999999999d6 from consuming unbounded memory and time. The parser enforces
+// them when resolving constant dice operands and building pools; the
+// evaluator enforces them when rolling.
+const (
+	// MaxCount is the largest number of dice in a single roll or pool.
+	MaxCount = 1000
+	// MaxSides is the largest number of sides on a single die.
+	MaxSides = 10000
+)
+
 // Dice rolls dice. It is an interface so evaluation can be tested
 // deterministically with a fixed source of rolls.
 type Dice interface {

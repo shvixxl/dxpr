@@ -55,16 +55,17 @@ func TestParse(t *testing.T) {
 		{"modifier with spaces", "4d6 dl 1", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
 		{"modifier on countless dice", "d20kh1", dicePool(20, 1, &ast.KeepRule{Keep: 1, Highest: true})},
 		{"modifier without count defaults to 1", "2d20kh", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true})},
+		{"drop on single die is a no-op", "d20dl1", dicePool(20, 1, &ast.KeepRule{Keep: 1, Highest: true})},
 		{"drop without count defaults to 1", "4d6dl", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
 		{"modifier count as expression", "4d6kh(2-1)", dicePool(6, 4, &ast.KeepRule{Keep: 1, Highest: true})},
 		{"modifier in arithmetic", "2d20kh1 + 5", bin("+", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true}), num(5))},
 		{"heterogeneous pool keep highest", "(d6, d10, 10)kh", &ast.Pool{
 			Elements: []ast.Node{&ast.Dice{Count: 1, Sides: 6}, &ast.Dice{Count: 1, Sides: 10}, num(10)},
-			Keep:     &ast.KeepRule{Keep: 1, Highest: true},
+			Keep:     ast.KeepRule{Keep: 1, Highest: true},
 		}},
 		{"heterogeneous pool drop lowest", "(d6, d10, 10)dl", &ast.Pool{
 			Elements: []ast.Node{&ast.Dice{Count: 1, Sides: 6}, &ast.Dice{Count: 1, Sides: 10}, num(10)},
-			Keep:     &ast.KeepRule{Keep: 2, Highest: true},
+			Keep:     ast.KeepRule{Keep: 2, Highest: true},
 		}},
 	}
 
@@ -106,7 +107,7 @@ func TestParseErrors(t *testing.T) {
 		{"modifier keep too many", "4d6kh5"},
 		{"modifier keep zero", "4d6kh0"},
 		{"modifier drop all dice", "4d6dl4"},
-		{"modifier on single die drop", "d20dl1"},
+
 		{"pool without modifier", "(1, 2)"},
 		{"pool with unknown modifier", "(1, 2)kz"},
 		{"dice in dice count", "(2d6)d6"},
@@ -132,7 +133,7 @@ func dicePool(sides, n int, keep *ast.KeepRule) *ast.Pool {
 	for i := range elements {
 		elements[i] = &ast.Dice{Count: 1, Sides: sides}
 	}
-	return &ast.Pool{Elements: elements, Keep: keep}
+	return &ast.Pool{Elements: elements, Keep: *keep}
 }
 
 // equal compares two ASTs structurally.
@@ -154,13 +155,7 @@ func equal(a, b ast.Node) bool {
 				return false
 			}
 		}
-		if (a.Keep == nil) != (b.Keep == nil) {
-			return false
-		}
-		if a.Keep == nil {
-			return true
-		}
-		return *a.Keep == *b.Keep
+		return a.Keep == b.Keep
 	case *ast.BinaryOp:
 		b, ok := b.(*ast.BinaryOp)
 		return ok && a.Op == b.Op && equal(a.Left, b.Left) && equal(a.Right, b.Right)

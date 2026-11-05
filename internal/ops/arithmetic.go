@@ -73,7 +73,7 @@ var Mod = Binary{
 var Negate = Unary{
 	Symbol:       "-",
 	BindingPower: BPMultiplicative,
-	Apply:       func(operand float64) (float64, error) { return -operand, nil },
+	Apply:        func(operand float64) (float64, error) { return -operand, nil },
 }
 
 // Pow is the exponentiation operator. It is right-associative.

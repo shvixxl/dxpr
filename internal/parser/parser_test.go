@@ -30,6 +30,7 @@ func TestParse(t *testing.T) {
 		{"power right assoc", "2^3^2", bin("^", num(2), bin("^", num(3), num(2)))},
 		{"power binds tightest", "2*3^2", bin("*", num(2), bin("^", num(3), num(2)))},
 		{"power alias same tree", "2**3**2", bin("^", num(2), bin("^", num(3), num(2)))},
+		{"multiply alias same tree", "2x3", bin("*", num(2), num(3))},
 		{"dice as operand", "d6+5", bin("+", &ast.Dice{Count: 1, Sides: 6}, num(5))},
 		{"dice in arithmetic", "2d6*3", bin("*", &ast.Dice{Count: 2, Sides: 6}, num(3))},
 		{"unary minus", "-5", &ast.UnaryOp{Op: "-", Operand: num(5)}},

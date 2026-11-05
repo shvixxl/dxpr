@@ -30,6 +30,8 @@ func TestEvaluate(t *testing.T) {
 		{"precedence", "2 + 3 * 4", 14},
 		{"power", "2^10", 1024},
 		{"power alias", "2 ** 10", 1024},
+		{"multiply alias", "2 x 10", 20},
+		{"multiply alias uppercase, no spaces", "2X10", 20},
 		{"floor division", "7 // 2", 3},
 		{"modulus", "7 % 3", 1},
 		{"dice with count", "3d6", 9},        // seqRoller returns all 3s

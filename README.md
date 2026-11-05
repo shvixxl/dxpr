@@ -37,6 +37,7 @@ dxpr 4d6dl1
 dxpr 'd20 + 10'
 dxpr '4d8 - 2'
 dxpr '2d6 * 3'
+dxpr '2d6 x 3'
 dxpr 'd100 / 7'
 dxpr '2^10'
 dxpr '3 ** 2'

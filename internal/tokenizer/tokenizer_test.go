@@ -88,6 +88,14 @@ func TestTokenize(t *testing.T) {
 			"kh10",
 			[]Token{{KindIdent, "kh"}, {KindNumber, "10"}, {KindEOF, ""}},
 		},
+		{
+			"letter run containing alias letter stays identifier",
+			"max(1,2)",
+			[]Token{
+				{KindIdent, "max"}, {KindLParen, "("}, {KindNumber, "1"},
+				{KindComma, ","}, {KindNumber, "2"}, {KindRParen, ")"}, {KindEOF, ""},
+			},
+		},
 	}
 
 	for _, tt := range tests {

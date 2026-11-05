@@ -57,7 +57,18 @@ func Tokenize(expr string) ([]Token, error) {
 			for i < len(runes) && unicode.IsLetter(runes[i]) {
 				i++
 			}
-			toks = append(toks, Token{Kind: KindIdent, Value: string(runes[start:i])})
+			run := string(runes[start:i])
+			// A letter run may be a registered operator alias (e.g. 'x' for
+			// '*'); the ops registry is the single source of truth.
+			if op, ok := ops.BinaryBySymbol[run]; ok {
+				toks = append(toks, Token{Kind: KindOperator, Value: op.Symbol})
+				continue
+			}
+			if op, ok := ops.UnaryBySymbol[run]; ok {
+				toks = append(toks, Token{Kind: KindOperator, Value: op.Symbol})
+				continue
+			}
+			toks = append(toks, Token{Kind: KindIdent, Value: run})
 		case r == '(':
 			toks = append(toks, Token{Kind: KindLParen, Value: "("})
 			i++

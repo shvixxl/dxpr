@@ -47,6 +47,7 @@ var Sub = Binary{
 // Mul is the multiplication operator.
 var Mul = Binary{
 	Symbol:       "*",
+	Aliases:      []string{"x", "X"},
 	BindingPower: BPMultiplicative,
 	Apply: func(a, b value.Value) (value.Value, error) {
 		if a.IsInt() && b.IsInt() {

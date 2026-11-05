@@ -26,7 +26,7 @@ dxpr 'd20 + 5'
 dxpr d20
 dxpr 3d6
 dxpr 3d20kh
-dxpr 4d6dl
+dxpr 4d6d
 dxpr 'max(d6, 2)d6'
 dxpr '(d10, d10, 5)kh2'
 dxpr '(3d6)d(3d10kh)'

@@ -50,9 +50,16 @@ func TestParse(t *testing.T) {
 			CountExpr: dicePool(6, 3, &ast.KeepRule{Keep: 1, Highest: true}),
 			SidesExpr: dicePool(10, 3, &ast.KeepRule{Keep: 1, Highest: true}),
 		}},
-		{"dynamic count from bare dice", "2d6d5", &ast.Dice{
+		{"dynamic count from parenthesized dice", "(2d6)d5", &ast.Dice{
 			CountExpr: &ast.Dice{Count: 2, Sides: 6},
 			Sides:     5,
+		}},
+		{"bare d is drop lowest", "4d6d1", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
+		{"bare d without count", "4d6d", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
+		{"bare d with expression count", "4d6d(2-1)", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
+		{"bare d on pool", "(d10, d10, 5)d2", &ast.Pool{
+			Elements: []ast.Node{&ast.Dice{Count: 1, Sides: 10}, &ast.Dice{Count: 1, Sides: 10}, num(5)},
+			Keep:     ast.KeepRule{Keep: 1, Highest: true},
 		}},
 		{"dice with expression sides", "2d(3-1)", &ast.Dice{Count: 2, Sides: 2}},
 		{"dice count converted to int", "(7/2)d6", &ast.Dice{Count: 3, Sides: 6}},
@@ -64,6 +71,8 @@ func TestParse(t *testing.T) {
 		{"modifier on countless dice", "d20kh1", dicePool(20, 1, &ast.KeepRule{Keep: 1, Highest: true})},
 		{"modifier without count defaults to 1", "2d20kh", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true})},
 		{"drop on single die is a no-op", "d20dl1", dicePool(20, 1, &ast.KeepRule{Keep: 1, Highest: true})},
+		{"keep highest alias k", "2d20k1", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true})},
+		{"keep highest alias k without count", "4d6k", dicePool(6, 4, &ast.KeepRule{Keep: 1, Highest: true})},
 		{"drop without count defaults to 1", "4d6dl", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
 		{"modifier count as expression", "4d6kh(2-1)", dicePool(6, 4, &ast.KeepRule{Keep: 1, Highest: true})},
 		{"modifier in arithmetic", "2d20kh1 + 5", bin("+", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true}), num(5))},
@@ -119,6 +128,9 @@ func TestParseErrors(t *testing.T) {
 		{"pool with unknown modifier", "(1, 2)kz"},
 		{"modifier with dynamic count", "(2d6)d6kh1"},
 		{"modifier with dynamic sides", "2d(3d1)kh1"},
+		{"bare d out of range", "2d6d5"},
+		{"bare d after modifier", "4d6kh1d1"},
+		{"bare d after dynamic dice", "(2d6)d5d1"},
 	}
 
 	for _, tt := range tests {

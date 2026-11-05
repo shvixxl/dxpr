@@ -47,7 +47,7 @@ func TestCryptoDiceRollCoversRange(t *testing.T) {
 }
 
 func TestLookupModifier(t *testing.T) {
-	for _, name := range []string{"kh", "kl", "dh", "dl"} {
+	for _, name := range []string{"kh", "k", "kl", "dh", "dl"} {
 		if _, err := LookupModifier(name); err != nil {
 			t.Errorf("LookupModifier(%q): %v", name, err)
 		}
@@ -59,8 +59,8 @@ func TestLookupModifier(t *testing.T) {
 
 func TestModifierRegistryProperties(t *testing.T) {
 	for name, mod := range ModifiersByName {
-		if mod.Name != name {
-			t.Errorf("name %q maps to modifier %q", name, mod.Name)
+		if mod.Name != name && !contains(mod.Aliases, name) {
+			t.Errorf("name %q maps to modifier %q without matching Name or Aliases", name, mod.Name)
 		}
 		if mod.Resolve == nil {
 			t.Errorf("modifier %q has nil Resolve", name)
@@ -119,3 +119,12 @@ func TestModifierResolve(t *testing.T) {
 
 func intPtr(n int) *int    { return &n }
 func boolPtr(b bool) *bool { return &b }
+
+func contains(list []string, s string) bool {
+	for _, item := range list {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}

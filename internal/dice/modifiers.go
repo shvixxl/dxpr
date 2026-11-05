@@ -10,6 +10,9 @@ import (
 type Modifier struct {
 	// Name is the modifier keyword (e.g. "kh").
 	Name string
+	// Aliases are alternative keywords for the same modifier (e.g. "k" for
+	// "kh").
+	Aliases []string
 	// Resolve converts the pool size and the modifier's count into a
 	// KeepRule, validating ranges. The count defaults to 1 when omitted
 	// (2d20kh == 2d20kh1).
@@ -24,9 +27,10 @@ func keepRange(mod string, n, max int) error {
 	return nil
 }
 
-// KeepHighest keeps the highest n rolls (kh).
+// KeepHighest keeps the highest n rolls (kh, alias k).
 var KeepHighest = Modifier{
-	Name: "kh",
+	Name:    "kh",
+	Aliases: []string{"k"},
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if err := keepRange("kh", n, count); err != nil {
 			return nil, err
@@ -62,11 +66,12 @@ var DropHighest = Modifier{
 	},
 }
 
-// DropLowest drops the lowest n rolls, keeping the rest (dl).
+// DropLowest drops the lowest n rolls, keeping the rest (dl, alias d).
 // On a single-element pool there is nothing to drop, so it is a no-op that
 // keeps the roll.
 var DropLowest = Modifier{
-	Name: "dl",
+	Name:    "dl",
+	Aliases: []string{"d"},
 	Resolve: func(count, n int) (*ast.KeepRule, error) {
 		if count == 1 {
 			return &ast.KeepRule{Keep: 1, Highest: true}, nil
@@ -81,13 +86,17 @@ var DropLowest = Modifier{
 // modifiers is the full set of dice modifiers.
 var modifiers = []Modifier{KeepHighest, KeepLowest, DropHighest, DropLowest}
 
-// ModifiersByName maps modifier keywords to their definitions.
+// ModifiersByName maps modifier keywords (including aliases) to their
+// definitions.
 var ModifiersByName = buildModifiersByName()
 
 func buildModifiersByName() map[string]Modifier {
 	m := make(map[string]Modifier)
 	for _, mod := range modifiers {
 		m[mod.Name] = mod
+		for _, alias := range mod.Aliases {
+			m[alias] = mod
+		}
 	}
 	return m
 }

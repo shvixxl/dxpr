@@ -72,22 +72,32 @@ func (p *parser) number() (int, error) {
 // expression parses atoms and binary operators with binding power of at
 // least minBP, climbing precedence as operators allow.
 func (p *parser) expression(minBP int) (ast.Node, error) {
-	left, err := p.atom()
+	left, bareDice, err := p.atom()
 	if err != nil {
 		return nil, err
 	}
 
+	// diceSeen tracks whether the expression already contains a completed
+	// roll. The first 'd' after an operand starts a roll ("2d6"); a 'd'
+	// after a completed roll is the bare drop-lowest modifier ("4d6d1" ==
+	// "4d6dl1"). Dynamic operands are parenthesized, so "(2d6)d5" still
+	// reads as dice.
+	diceSeen := bareDice
+
 	for {
 		tok := p.peek()
 
-		// A 'd' suffix turns any constant expression into a dice count:
-		// "(3+6)d(3-1)" == "9d2". Dice binds tighter than any operator.
 		if tok.Kind == tokenizer.KindDice {
 			p.next()
-			left, err = p.diceSuffix(left)
+			if diceSeen {
+				left, err = p.dropSuffix(left)
+			} else {
+				left, err = p.diceSuffix(left)
+			}
 			if err != nil {
 				return nil, err
 			}
+			diceSeen = true
 			continue
 		}
 
@@ -116,15 +126,17 @@ func (p *parser) expression(minBP int) (ast.Node, error) {
 	}
 }
 
-// atom := unaryOp atom | functionCall | '(' expression ')' | [number] 'd' number | number
-func (p *parser) atom() (ast.Node, error) {
+// atom parses the smallest self-contained unit. The bool reports whether
+// the atom was a bare dice roll ("d20"), so the expression loop treats a
+// following 'd' as a modifier rather than a new roll.
+func (p *parser) atom() (ast.Node, bool, error) {
 	// Parenthesized grouping or pool: "(a, b, c)kh1" is a pool and
 	// requires a modifier; "(a)" is plain grouping.
 	if p.peek().Kind == tokenizer.KindLParen {
 		p.next()
 		first, err := p.expression(0)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		elements := []ast.Node{first}
 		isPool := false
@@ -132,29 +144,31 @@ func (p *parser) atom() (ast.Node, error) {
 			p.next()
 			el, err := p.expression(0)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 			elements = append(elements, el)
 			isPool = true
 		}
 		if _, err := p.expect(tokenizer.KindRParen); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		if !isPool {
-			return first, nil
+			return first, false, nil
 		}
-		return p.poolSuffix(elements)
+		node, err := p.poolSuffix(elements)
+		return node, false, err
 	}
 
 	// A bare 'd' lexes as an identifier; give a helpful error instead of
 	// "unknown function".
 	if tok := p.peek(); tok.Kind == tokenizer.KindIdent && (tok.Value == "d" || tok.Value == "D") {
-		return nil, fmt.Errorf("expected number of sides after 'd'")
+		return nil, false, fmt.Errorf("expected number of sides after 'd'")
 	}
 
 	// Function calls.
 	if p.peek().Kind == tokenizer.KindIdent {
-		return p.functionCall()
+		node, err := p.functionCall()
+		return node, false, err
 	}
 
 	// Prefix (unary) operators.
@@ -163,23 +177,48 @@ func (p *parser) atom() (ast.Node, error) {
 			p.next()
 			operand, err := p.expression(op.BindingPower)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
-			return &ast.UnaryOp{Op: op.Symbol, Operand: operand}, nil
+			return &ast.UnaryOp{Op: op.Symbol, Operand: operand}, false, nil
 		}
 	}
 
 	// Bare "d20" / "d(3-1)": count defaults to 1.
 	if p.peek().Kind == tokenizer.KindDice {
 		p.next()
-		return p.diceSuffix(&ast.Number{Value: 1})
+		node, err := p.diceSuffix(&ast.Number{Value: 1})
+		return node, true, err
 	}
 
 	n, err := p.number()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return &ast.Number{Value: n}, nil
+	return &ast.Number{Value: n}, false, nil
+}
+
+// dropSuffix applies the bare 'd' form of the drop-lowest modifier to a
+// completed dice roll: "4d6d1" == "4d6dl1". The 'd' token is consumed; the
+// optional count (a number or parenthesized expression) is parsed by
+// applyModifier.
+func (p *parser) dropSuffix(left ast.Node) (ast.Node, error) {
+	d, ok := left.(*ast.Dice)
+	if !ok {
+		return nil, fmt.Errorf("dice already has a modifier")
+	}
+	if d.CountExpr != nil || d.SidesExpr != nil {
+		return nil, fmt.Errorf("dice modifiers require constant count and sides")
+	}
+	if d.Count > dice.MaxCount {
+		return nil, fmt.Errorf("dice count %d too large (max %d)", d.Count, dice.MaxCount)
+	}
+	// Like the named modifiers, the bare 'd' selects among individual
+	// rolls, so the dice expand into a pool.
+	elements := make([]ast.Node, d.Count)
+	for i := range elements {
+		elements[i] = &ast.Dice{Count: 1, Sides: d.Sides}
+	}
+	return p.applyModifier(dice.DropLowest, elements)
 }
 
 // diceSuffix parses what follows a consumed 'd' token: the sides (a number
@@ -264,12 +303,21 @@ func (p *parser) diceSides() (ast.Node, error) {
 	return &ast.Number{Value: sides}, nil
 }
 
-// poolSuffix applies a mandatory pool modifier (kh/kl/dh/dl) to elements.
+// poolSuffix applies a mandatory pool modifier (kh/kl/dh/dl, or the bare
+// 'd' form of dl) to elements.
 func (p *parser) poolSuffix(elements []ast.Node) (ast.Node, error) {
 	tok := p.peek()
-	mod, ok := dice.ModifiersByName[tok.Value]
-	if tok.Kind != tokenizer.KindIdent || !ok {
-		return nil, fmt.Errorf("expected pool modifier (kh, kl, dh, dl) after pool, got %s", tok.Describe())
+	var mod dice.Modifier
+	if tok.Kind == tokenizer.KindDice {
+		// 'd' followed by a digit or '(' lexes as the dice token; after a
+		// pool it can only be the dl modifier: "(d10, d10, 5)d2".
+		mod = dice.DropLowest
+	} else {
+		m, ok := dice.ModifiersByName[tok.Value]
+		if tok.Kind != tokenizer.KindIdent || !ok {
+			return nil, fmt.Errorf("expected pool modifier (kh, k, kl, dh, dl, d) after pool, got %s", tok.Describe())
+		}
+		mod = m
 	}
 	p.next()
 	if len(elements) > dice.MaxCount {

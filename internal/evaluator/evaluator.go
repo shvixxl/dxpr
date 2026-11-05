@@ -12,10 +12,11 @@ import (
 )
 
 // Resource limits for dice evaluation. They keep adversarial input such as
-// 999999999d6 from consuming unbounded memory and time.
+// 999999999d6 from consuming unbounded memory and time. The parser also
+// enforces them when resolving constant dice operands and building pools.
 const (
-	maxDiceCount = 1000
-	maxDiceSides = 10000
+	MaxDiceCount = 1000
+	MaxDiceSides = 10000
 )
 
 // Dice is satisfied by anything that can roll dice.
@@ -44,39 +45,65 @@ func evalValue(node ast.Node, roller Dice) (value.Value, error) {
 		if n.Count < 1 {
 			return value.Value{}, fmt.Errorf("invalid dice count: %d", n.Count)
 		}
-		if n.Count > maxDiceCount {
-			return value.Value{}, fmt.Errorf("dice count %d too large (max %d)", n.Count, maxDiceCount)
+		if n.Count > MaxDiceCount {
+			return value.Value{}, fmt.Errorf("dice count %d too large (max %d)", n.Count, MaxDiceCount)
 		}
 		if n.Sides < 1 {
 			return value.Value{}, fmt.Errorf("invalid dice sides: %d", n.Sides)
 		}
-		if n.Sides > maxDiceSides {
-			return value.Value{}, fmt.Errorf("dice sides %d too large (max %d)", n.Sides, maxDiceSides)
+		if n.Sides > MaxDiceSides {
+			return value.Value{}, fmt.Errorf("dice sides %d too large (max %d)", n.Sides, MaxDiceSides)
 		}
-		if n.Keep != nil && (n.Keep.Keep < 1 || n.Keep.Keep > n.Count) {
-			return value.Value{}, fmt.Errorf("invalid keep count: %d (dice count %d)", n.Keep.Keep, n.Count)
-		}
-		rolls := make([]int, n.Count)
-		for i := range rolls {
+		total := int64(0)
+		for i := 0; i < n.Count; i++ {
 			roll, err := roller.Roll(n.Sides)
 			if err != nil {
 				return value.Value{}, err
 			}
-			rolls[i] = roll
-		}
-		if n.Keep != nil {
-			sort.Ints(rolls)
-			if n.Keep.Highest {
-				rolls = rolls[len(rolls)-n.Keep.Keep:]
-			} else {
-				rolls = rolls[:n.Keep.Keep]
-			}
-		}
-		total := int64(0)
-		for _, roll := range rolls {
-			total += int64(roll)
+		total += int64(roll)
 		}
 		return value.FromInt(total), nil
+
+	case *ast.Pool:
+		if len(n.Elements) < 1 {
+			return value.Value{}, fmt.Errorf("invalid pool: no elements")
+		}
+		if len(n.Elements) > MaxDiceCount {
+			return value.Value{}, fmt.Errorf("pool size %d too large (max %d)", len(n.Elements), MaxDiceCount)
+		}
+		vals := make([]value.Value, len(n.Elements))
+		for i, el := range n.Elements {
+			v, err := evalValue(el, roller)
+			if err != nil {
+				return value.Value{}, err
+			}
+			vals[i] = v
+		}
+		if n.Keep != nil {
+			if n.Keep.Keep < 1 || n.Keep.Keep > len(vals) {
+				return value.Value{}, fmt.Errorf("invalid keep count: %d (pool size %d)", n.Keep.Keep, len(vals))
+			}
+			sort.SliceStable(vals, func(i, j int) bool {
+				return vals[i].Float() < vals[j].Float()
+			})
+			if n.Keep.Highest {
+				vals = vals[len(vals)-n.Keep.Keep:]
+			} else {
+				vals = vals[:n.Keep.Keep]
+			}
+		}
+		allInt := true
+		total := 0.0
+		for _, v := range vals {
+			if !v.IsInt() {
+				allInt = false
+			}
+			total += v.Float()
+		}
+		if allInt {
+			return value.FromInt(int64(total)), nil
+		}
+		return value.FromFloat(total), nil
 
 	case *ast.BinaryOp:
 		left, err := evalValue(n.Left, roller)

@@ -45,15 +45,27 @@ func TestParse(t *testing.T) {
 		{"function variadic", "min(3, 1, 2)", &ast.FnCall{Name: "min", Args: []ast.Node{num(3), num(1), num(2)}}},
 		{"function with expression args", "max(1+1, 2^3)", &ast.FnCall{Name: "max", Args: []ast.Node{bin("+", num(1), num(1)), bin("^", num(2), num(3))}}},
 		{"function in arithmetic", "abs(-5) + 1", bin("+", &ast.FnCall{Name: "abs", Args: []ast.Node{&ast.UnaryOp{Op: "-", Operand: num(5)}}}, num(1))},
-		{"keep highest", "2d20kh1", &ast.Dice{Count: 2, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}},
-		{"keep lowest", "4d6kl2", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 2, Highest: false}}},
-		{"drop lowest", "4d6dl1", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}},
-		{"drop highest", "3d6dh1", &ast.Dice{Count: 3, Sides: 6, Keep: &ast.KeepRule{Keep: 2, Highest: false}}},
-		{"modifier with spaces", "4d6 dl 1", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}},
-		{"modifier on countless dice", "d20kh1", &ast.Dice{Count: 1, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}},
-		{"modifier without count defaults to 1", "2d20kh", &ast.Dice{Count: 2, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}},
-		{"drop without count defaults to 1", "4d6dl", &ast.Dice{Count: 4, Sides: 6, Keep: &ast.KeepRule{Keep: 3, Highest: true}}},
-		{"modifier in arithmetic", "2d20kh1 + 5", bin("+", &ast.Dice{Count: 2, Sides: 20, Keep: &ast.KeepRule{Keep: 1, Highest: true}}, num(5))},
+		{"dice with expression count", "(3+6)d(3-1)", &ast.Dice{Count: 9, Sides: 2}},
+		{"dice with expression sides", "2d(3-1)", &ast.Dice{Count: 2, Sides: 2}},
+		{"dice count converted to int", "(7/2)d6", &ast.Dice{Count: 3, Sides: 6}},
+		{"keep highest", "2d20kh1", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true})},
+		{"keep lowest", "4d6kl2", dicePool(6, 4, &ast.KeepRule{Keep: 2, Highest: false})},
+		{"drop lowest", "4d6dl1", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
+		{"drop highest", "3d6dh1", dicePool(6, 3, &ast.KeepRule{Keep: 2, Highest: false})},
+		{"modifier with spaces", "4d6 dl 1", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
+		{"modifier on countless dice", "d20kh1", dicePool(20, 1, &ast.KeepRule{Keep: 1, Highest: true})},
+		{"modifier without count defaults to 1", "2d20kh", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true})},
+		{"drop without count defaults to 1", "4d6dl", dicePool(6, 4, &ast.KeepRule{Keep: 3, Highest: true})},
+		{"modifier count as expression", "4d6kh(2-1)", dicePool(6, 4, &ast.KeepRule{Keep: 1, Highest: true})},
+		{"modifier in arithmetic", "2d20kh1 + 5", bin("+", dicePool(20, 2, &ast.KeepRule{Keep: 1, Highest: true}), num(5))},
+		{"heterogeneous pool keep highest", "(d6, d10, 10)kh", &ast.Pool{
+			Elements: []ast.Node{&ast.Dice{Count: 1, Sides: 6}, &ast.Dice{Count: 1, Sides: 10}, num(10)},
+			Keep:     &ast.KeepRule{Keep: 1, Highest: true},
+		}},
+		{"heterogeneous pool drop lowest", "(d6, d10, 10)dl", &ast.Pool{
+			Elements: []ast.Node{&ast.Dice{Count: 1, Sides: 6}, &ast.Dice{Count: 1, Sides: 10}, num(10)},
+			Keep:     &ast.KeepRule{Keep: 2, Highest: true},
+		}},
 	}
 
 	for _, tt := range tests {
@@ -95,6 +107,10 @@ func TestParseErrors(t *testing.T) {
 		{"modifier keep zero", "4d6kh0"},
 		{"modifier drop all dice", "4d6dl4"},
 		{"modifier on single die drop", "d20dl1"},
+		{"pool without modifier", "(1, 2)"},
+		{"pool with unknown modifier", "(1, 2)kz"},
+		{"dice in dice count", "(2d6)d6"},
+		{"dice in dice sides", "2d(3d1)"},
 	}
 
 	for _, tt := range tests {
@@ -110,6 +126,15 @@ func TestParseErrors(t *testing.T) {
 	}
 }
 
+// dicePool builds a Pool of n dice with the given sides and keep rule.
+func dicePool(sides, n int, keep *ast.KeepRule) *ast.Pool {
+	elements := make([]ast.Node, n)
+	for i := range elements {
+		elements[i] = &ast.Dice{Count: 1, Sides: sides}
+	}
+	return &ast.Pool{Elements: elements, Keep: keep}
+}
+
 // equal compares two ASTs structurally.
 func equal(a, b ast.Node) bool {
 	switch a := a.(type) {
@@ -118,8 +143,16 @@ func equal(a, b ast.Node) bool {
 		return ok && a.Value == b.Value
 	case *ast.Dice:
 		b, ok := b.(*ast.Dice)
-		if !ok || a.Count != b.Count || a.Sides != b.Sides {
+		return ok && a.Count == b.Count && a.Sides == b.Sides
+	case *ast.Pool:
+		b, ok := b.(*ast.Pool)
+		if !ok || len(a.Elements) != len(b.Elements) {
 			return false
+		}
+		for i := range a.Elements {
+			if !equal(a.Elements[i], b.Elements[i]) {
+				return false
+			}
 		}
 		if (a.Keep == nil) != (b.Keep == nil) {
 			return false

@@ -147,6 +147,41 @@ func TestFloatSemantics(t *testing.T) {
 	}
 }
 
+func TestDynamicDice(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want int
+	}{
+		{"expression count and sides", "(3+6)d(3-1)", 27}, // 9d2, seqRoller returns all 3s
+		{"expression sides only", "2d(3-1)", 6},           // 2d2
+		{"expression count only", "(3+6)d2", 27},           // 9d2
+		{"count converted to int", "(7/2)d6", 9},            // 3d6
+		{"constant function operand", "max(3, 9)d2", 27},    // 9d2
+		{"dynamic dice in arithmetic", "(3+6)d(3-1) + 1", 28},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := dxpr.EvaluateWithDice(tt.in, &seqRoller{rolls: []int{3}})
+			if err != nil {
+				t.Fatalf("EvaluateWithDice(%q): %v", tt.in, err)
+			}
+			if got != tt.want {
+				t.Errorf("EvaluateWithDice(%q) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDynamicDiceErrors(t *testing.T) {
+	for _, in := range []string{"(2d6)d6", "2d(3d1)", "(1, 2)", "(1, 2)kz", "(3+6)d", "(0)d6"} {
+		if _, err := dxpr.EvaluateWithDice(in, &seqRoller{rolls: []int{3}}); err == nil {
+			t.Errorf("EvaluateWithDice(%q) succeeded, want error", in)
+		}
+	}
+}
+
 func TestKeepDrop(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -162,6 +197,10 @@ func TestKeepDrop(t *testing.T) {
 		{"drop highest keeps rest", "3d6dh1", []int{1, 6, 2}, 3},
 		{"keep in arithmetic", "2d20kh1 + 5", []int{5, 12}, 17},
 		{"keep inside function", "min(2d20kh1, 10)", []int{5, 12}, 10},
+		{"heterogeneous pool keep highest", "(d6, d10, 10)kh", []int{5, 12}, 12},
+		{"heterogeneous pool keep lowest", "(d6, d10, 10)kl", []int{5, 12}, 5},
+		{"pool modifier count as expression", "(d6, d10, 10)kh(2-1)", []int{5, 12}, 12},
+		{"pool drop lowest keeps rest", "(d6, d10, 10)dl", []int{5, 12}, 22},
 	}
 
 	for _, tt := range tests {

@@ -26,9 +26,10 @@ dxpr 'd20 + 5'
 dxpr d20
 dxpr 3d6
 dxpr d100
-dxpr 2d20kh1
-dxpr 2d20kl
-dxpr 4d6dl1
+dxpr 3d20kh2
+dxpr 4d6dl
+dxpr 'max(d6, 2)d6'
+dxpr '(d10, 5)kh1'
 ```
 
 ### Operators
